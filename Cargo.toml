@@ -1,0 +1,12 @@
+[package]
+name = "briny"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+description = "Low-level foundational utilities for the briny ecosystem"
+license = "MIT"
+documentation = "https://docs.rs/briny"
+keywords = ["security", "validation", "no_std", "zta", "no_alloc"]
+categories = ["no-std","embedded","cryptography","data-structures","no-std::no-alloc"]
+repository = "https://github.com/bobbothe2nd/briny"
+readme = "README.md"
