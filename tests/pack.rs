@@ -1,7 +1,7 @@
-use briny::prelude::*;
 use briny::pack::{Pack, PackRef, Unpack, UnpackBuf};
-use briny::trust::{ValidationError, TrustedData};
+use briny::prelude::*;
 use briny::raw::Raw;
+use briny::trust::{TrustedData, ValidationError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct MyData(u32);
@@ -46,15 +46,54 @@ impl Unpack for MyData {
 }
 
 #[test]
-fn test_pack_unpack_roundtrip() {
-    let original = TrustedData::new(MyData(42)).unwrap();
+fn test_pack_unpack_roundtrip() -> Result<(), Box<dyn core::error::Error>> {
+    let original = TrustedData::new(MyData(42))?;
 
     let mut buffer = [0u8; 4];
     let out = PackRef::new(&mut buffer);
-    original.pack(out).unwrap();
+    original.pack(out)?;
 
     let input = UnpackBuf::new(&buffer);
-    let unpacked = MyData::unpack_and_validate(input).unwrap();
+    let unpacked = MyData::unpack_and_validate(input)?;
 
     assert_eq!(unpacked.get(), original.get());
+
+    Ok(())
+}
+
+#[test]
+fn roundtrip_pack_unpack_u32() -> Result<(), Box<dyn core::error::Error>> {
+    use briny::raw::{ByteBuf, Raw};
+    use briny::trust::{TrustedData, Validate, ValidationError};
+
+    #[derive(Debug, Clone, Copy)]
+    struct MyU32(u32);
+
+    impl Raw<4> for MyU32 {
+        fn from_bytes(bytes: [u8; 4]) -> Result<Self, ValidationError> {
+            Ok(MyU32(u32::from_le_bytes(bytes)))
+        }
+
+        fn to_bytes(&self) -> [u8; 4] {
+            self.0.to_le_bytes()
+        }
+    }
+
+    impl Validate for MyU32 {
+        fn validate(&self) -> Result<(), ValidationError> {
+            if self.0 <= 10000 {
+                Ok(())
+            } else {
+                Err(ValidationError)
+            }
+        }
+    }
+
+    let original = MyU32(1337);
+    let raw = ByteBuf::<MyU32, 4>::new(original.to_bytes());
+    let parsed = raw.parse()?;
+    let trusted = TrustedData::new(parsed)?;
+    assert_eq!(trusted.get().0, 1337);
+
+    Ok(())
 }

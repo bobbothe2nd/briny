@@ -41,13 +41,16 @@
 //!     }
 //! }
 //!
-//! let raw = UntrustedData::new(MyData([42, 0, 0, 0]));
-//! let trusted = TrustedData::new(raw.into_inner()).unwrap();
+//! fn main() -> Result<(), Box<dyn core::error::Error>> {
+//!     let raw = UntrustedData::new(MyData([42, 0, 0, 0]));
+//!     let trusted = TrustedData::new(raw.into_inner())?;
+//!
+//!     Ok(())
+//! }
 //! ```
 
-
-use core::{fmt::Debug, marker::PhantomData};
 use crate::pack::{Pack, PackRef, Unpack, UnpackBuf};
+use core::{fmt::Debug, marker::PhantomData};
 
 /// Marker trait for values that have passed validation and are considered safe.
 ///
@@ -65,12 +68,22 @@ pub trait Untrusted {}
 /// Validation failure type.
 ///
 /// Implementors of `Validate` return this to indicate invalid inputs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// # Binary Size Concerns
+///
+/// Implements `core::fmt::Display` and `core::error::Error`.
+///
+/// These implementations do **not** rely on `std`, and avoid formatting macros
+/// to minimize binary size. In embedded builds, avoid calling `.to_string()`
+/// or `format!()` with this type.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)] // remove all but `Debug`
 pub struct ValidationError;
 
 impl core::fmt::Display for ValidationError {
+    #[inline(always)]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "validation failed")
+        f.write_str("validation failed")
     }
 }
 
@@ -80,13 +93,27 @@ impl core::error::Error for ValidationError {}
 ///
 /// This trait is the gateway from `UntrustedData` → `TrustedData`. If
 /// `validate()` fails, the data should be considered unusable.
-pub trait Validate {
+pub trait Validate<C = ()> {
+    #[cold]
+    /// Validator method to confirm trust on implementors.
+    #[must_use]
     fn validate(&self) -> Result<(), ValidationError>;
+
+    ///
+    #[must_use]
+    fn validate_with(&self, _ctx: &C) -> Result<(), ValidationError> {
+        self.validate()
+    }
 }
 
 impl<T: Clone, const N: usize> Validate for crate::raw::ByteBuf<T, N> {
+    #[inline(always)]
     fn validate(&self) -> Result<(), ValidationError> {
-        if self.clone().len() < 256 { Ok(()) } else { Err(ValidationError) }
+        if self.clone().len() < 256 {
+            Ok(())
+        } else {
+            Err(ValidationError)
+        }
     }
 }
 
@@ -105,20 +132,24 @@ pub struct UntrustedData<'a, T> {
 impl<'a, T> UntrustedData<'a, T> {
     #[must_use]
     /// Constructs a new `UntrustedData` wrapper.
-    pub fn new(value: T) -> Self {
+    #[inline(always)]
+    pub const fn new(value: T) -> Self {
         Self {
             value,
             _marker: PhantomData,
         }
     }
 
+    #[must_use]
     /// Borrow the underlying data (still untrusted).
-    pub fn value(&self) -> &T {
+    #[inline(always)]
+    pub const fn value(&self) -> &T {
         &self.value
     }
 
     #[must_use]
     /// Consume and return the raw inner value.
+    #[inline(always)]
     pub fn into_inner(self) -> T {
         self.value
     }
@@ -130,14 +161,16 @@ impl<'a, T> Untrusted for UntrustedData<'a, T> {}
 ///
 /// This is the only public type that implements `Trusted`, and it cannot be
 /// constructed outside of this module without passing validation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone)] // remove Clone
 pub struct TrustedData<'a, T> {
     inner: T,
     _marker: PhantomData<&'a ()>,
 }
 
 impl<'a, T> TrustedData<'a, T> {
+    #[must_use]
     /// Validates the given value and, if successful, wraps it as `TrustedData`.
+    #[inline(always)]
     pub fn new(value: T) -> Result<Self, ValidationError>
     where
         T: Validate,
@@ -149,18 +182,23 @@ impl<'a, T> TrustedData<'a, T> {
         })
     }
 
+    #[must_use]
     /// Borrow the trusted inner value.
-    pub fn get(&self) -> &T {
-        &self.inner
+    #[inline(always)]
+    pub const fn get(&self) -> &T {
+        &self.inner // rename to `value()` for consistency
     }
 
     #[must_use]
     /// Consume the wrapper and return the trusted inner value.
+    #[inline(always)]
     pub fn into_inner(self) -> T {
         self.inner
     }
 
+    #[must_use]
     /// Serialize the trusted value using its `Pack` implementation.
+    #[inline(always)]
     pub fn pack(&self, out: PackRef<'_>) -> Result<(), ValidationError>
     where
         T: Pack,
@@ -168,9 +206,11 @@ impl<'a, T> TrustedData<'a, T> {
         self.inner.pack(out)
     }
 
+    #[must_use]
     /// Deserialize and validate a value from the given input buffer.
     ///
     /// Returns an error if validation fails.
+    #[inline(always)]
     pub fn unpack(input: UnpackBuf<'a>) -> Result<Self, ValidationError>
     where
         T: Unpack,
@@ -178,9 +218,11 @@ impl<'a, T> TrustedData<'a, T> {
         T::unpack_and_validate(input)
     }
 
+    #[must_use]
     /// Re-check whether the value is still valid.
     ///
     /// This may be useful in long-lived or transformed data.
+    #[inline(always)]
     pub fn is_valid(&self) -> bool
     where
         T: Validate,
@@ -188,9 +230,11 @@ impl<'a, T> TrustedData<'a, T> {
         self.inner.validate().is_ok()
     }
 
+    #[must_use]
     /// Attempt to transform the value while preserving trust boundaries.
     ///
     /// The transformation must produce a new value that also validates.
+    #[inline(always)]
     pub fn try_map<U, F>(self, f: F) -> Result<TrustedData<'a, U>, ValidationError>
     where
         F: FnOnce(T) -> U,
@@ -205,6 +249,7 @@ impl<'a, T> TrustedData<'a, T> {
 ///
 /// Enables ergonomic `trust_from()` constructors without exposing internals.
 pub trait TrustFrom<'a, T>: Sized {
+    /// Quickly converts UntrustedData to TrustedData without enforcing validation.
     fn trust_from(input: UntrustedData<'a, T>) -> Result<TrustedData<'a, Self>, ValidationError>;
 }
 
@@ -217,15 +262,14 @@ mod private {
 
 impl<'a, T> Trusted for TrustedData<'a, T> {}
 
-/// Testing-only escape hatch: assumes the input is valid without validation.
-///
-/// Use only in `#[cfg(test)]` contexts where strict input control is enforced.
 #[cfg(test)]
 impl<'a, T> TrustedData<'a, T> {
+    /// Internal-only bypass for test scaffolding.
     pub fn assume_valid(value: T) -> Self {
+        // remove entirely
         Self {
             inner: value,
-            _marker: PhantomData,
+            _marker: core::marker::PhantomData,
         }
     }
 }
@@ -238,7 +282,11 @@ mod tests {
 
     impl Validate for MyData {
         fn validate(&self) -> Result<(), ValidationError> {
-            if self.0[0] == 42 { Ok(()) } else { Err(ValidationError) }
+            if self.0[0] == 42 {
+                Ok(())
+            } else {
+                Err(ValidationError)
+            }
         }
     }
 
@@ -253,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pack_stub() {
+    fn test_pack_stub() -> Result<(), Box<dyn core::error::Error>> {
         struct Example([u8; 4]);
 
         impl Validate for Example {
@@ -270,10 +318,34 @@ mod tests {
         }
 
         let data = Example([1, 2, 3, 4]);
-        let trusted = TrustedData::new(data).unwrap();
+        let trusted = TrustedData::new(data)?;
 
         let mut buf = [0u8; 4];
-        trusted.pack(PackRef::new(&mut buf)).unwrap();
+        trusted.pack(PackRef::new(&mut buf))?;
         assert_eq!(buf, [1, 2, 3, 4]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_is_valid_rechecks_state() {
+        #[derive(Clone)]
+        struct Flaky(u8);
+
+        impl Validate for Flaky {
+            fn validate(&self) -> Result<(), ValidationError> {
+                if self.0 % 2 == 0 {
+                    Ok(())
+                } else {
+                    Err(ValidationError)
+                }
+            }
+        }
+
+        let valid = TrustedData::new(Flaky(2)).unwrap();
+        assert!(valid.is_valid());
+
+        let changed = TrustedData::assume_valid(Flaky(3)); // only in test
+        assert!(!changed.is_valid());
     }
 }

@@ -15,15 +15,8 @@
 //! ```
 
 pub use crate::{
-    trust::{
-        TrustedData, Validate, ValidationError,
-        Untrusted, UntrustedData,
-    },
-    pack::{
-        Pack, PackRef, Unpack, UnpackBuf,
-    },
-    raw::{
-        Raw, ByteBuf,
-    },
+    pack::{Pack, PackRef, Unpack, UnpackBuf},
+    raw::{ByteBuf, Raw},
+    trust::{TrustedData, Untrusted, UntrustedData, Validate, ValidationError},
 };
 pub use core::str::FromStr;

@@ -1,16 +1,14 @@
 # briny
 
-**Secure, zero-trust data validation and binary serialization for embedded and systems Rust.**
+`briny` is one of the only Rust crates that enforces binary trust boundaries at compile time — zero unsafe, no-alloc, no-macro.
 
 `briny` gives you airtight control over what data is trusted and when. It helps you securely parse, validate, and serialize binary-structured data without ever trusting unchecked input.
 
----
+## What Makes `briny` Different?
 
-## What Makes Briny Different?
+`briny` enforces Zero Trust Architecture (ZTA) principles at compile time. Just like Rust's ownership system prevents memory safety bugs before runtime, `briny` prevents logic from touching untrusted or unvalidated input. No hopeful parsing, no runtime footguns.
 
-Briny enforces **Zero Trust Architecture (ZTA)** principles **at compile time**. Just like Rust’s ownership system prevents memory safety bugs **before runtime**, Briny prevents logic from touching untrusted or unvalidated input **before it compiles**. No hopeful parsing, no runtime footguns.
-
-### If you follow Briny’s rules
+### If you follow `briny`'s rules
 
 - All external data must pass `Validate` before use
 - All deserialized structures are wrapped in `TrustedData`
@@ -18,27 +16,25 @@ Briny enforces **Zero Trust Architecture (ZTA)** principles **at compile time**.
 
 ### If you *don't* follow the rules
 
-- It’s like misusing `unsafe {}` — *you opt out of the safety net*
-- Briny won’t stop you from writing broken or insecure `Validate` impls
+- It's like misusing `unsafe {}` — *you opt out of the safety net*
+- `briny` won't stop you from writing broken or insecure `Validate` impls
 - You can still violate trust boundaries *after* validation, if you ignore discipline
-- Briny can't enforce runtime misuse beyond the type system.
+- `briny` can't enforce runtime misuse beyond the type system.
 
----
-
-## Why Use Briny?
+## Why Use `briny`?
 
 - Enforce trust boundaries with marker traits (`Trusted`, `Untrusted`)
-- Zero dependencies and `#![no_std]` compatible
+- Zero dependencies and `#![no_std]` compatible - no `alloc` either
 - Built for embedded, security-critical, and sandboxed Rust systems
-- Prevent bugs **before they ship**, **before they're tested**, **before they compile**
+- Prevent bugs before you even test for them
 
-### Warning: Briny Is a Power Tool
+### Warning: `briny` Is a Power Tool
 
-Briny helps you build airtight validation infrastructure — but like `unsafe`, **it must be used with care**. If downstream crates implement `Validate` incorrectly, or mutate `TrustedData` unsafely, **no compile-time model can save you**.
+`briny` helps you build airtight validation infrastructure — but like `unsafe`, it must be used with care. If downstream crates implement `Validate` incorrectly, or mutate `TrustedData` unsafely, no compile-time model can save you.
 
-Use Briny to make the safe path easy and the unsafe path obvious.
+Use `briny` to make the safe path easy and the unsafe path obvious.
 
-Briny is ideal for:
+`briny` is ideal for:
 
 - Hardened OS modules
 - Secure microservices
@@ -47,9 +43,7 @@ Briny is ideal for:
 - Embedded bootloaders and firmware parsing
 - WASM interfaces
 
-Use Briny where trust boundaries matter most — and test isn’t enough.
-
----
+Use `briny` where trust boundaries matter most — and test isn't enough.
 
 ## Features
 
@@ -66,15 +60,13 @@ Use Briny where trust boundaries matter most — and test isn’t enough.
 - `UntrustedData<T>`: Marker for unsafe input (from users, network, disk, etc.)
 - `Validate`: Trait that defines the rules for converting untrusted data into trusted form
 - `TrustedData<T>`: Guarantees validation has occurred — only safe data gets in
-- Sealed trait `Trusted` ensures trust cannot be forged outside the crate
+- Sealed trait `Trusted` ensures trust cannot be used outside the crate
 
 This ZTA-style model improves security on many frontiers, meaning:
 
 - No unchecked logic runs on untrusted data
 - All transitions are explicit and type-checked
-- You can’t forget to validate
-
----
+- You *can't* forget to validate
 
 ## Example
 
@@ -135,9 +127,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | `no_std` compatible               | ~ | N | Y | Y |
 | Accidental bypasses impossible    | N | N | N | Y |
 
-### What Briny Does Not Do
+### What `briny` Does Not Do
 
-While Briny enforces trust boundaries at compile time, it is *not* a one-size-fits-all validation framework. It does not:
+While `briny` enforces trust boundaries at compile time, it's not a one-size-fits-all validation framework. It doesn't...
 
 - Parse or validate complex or nested data formats like JSON, XML, or YAML.
 - Handle cryptographic operations or key management.
@@ -145,13 +137,13 @@ While Briny enforces trust boundaries at compile time, it is *not* a one-size-fi
 - Offer detailed validation error reporting with rich diagnostics.
 - Support heap allocations or complex data structures requiring `std` or `alloc`.
 
-Use Briny when you need **binary-safe, zero-cost, compile-time enforced trust** for fixed-layout, embedded, or low-level data structures.
+Use `briny` when you need binary-safe, zero-cost, compile-time enforced trust for fixed-layout, embedded, or low-level data structures.
 
-For everything else—especially rich data formats or dynamic validation—consider combining Briny with crates like `serde`, `validator`, or `nom`.
+For everything else—especially rich data formats or dynamic validation—consider combining `briny` with crates like `serde`, `validator`, or `nom`.
 
-Comparison use Case: Validate a 4-byte array, first byte must be 42
+Here is a comparison between `briny`, `serde`, `validator`, and `nom` where each must validate a 4-byte array where the first byte is 42.
 
-### serde — Deserialization without enforced validation
+#### serde — Deserialization without enforced validation
 
 ```rust
 use serde::Deserialize;
@@ -168,7 +160,7 @@ assert_eq!(my.0[0], 42); // Could panic or be wrong
 
 Risk: Data is used before it's validated. The deserialized value is implicitly trusted.
 
-### validator — Runtime validation, trust still implicit
+#### validator — Runtime validation, trust still implicit
 
 ```rust
 use validator::{Validate};
@@ -188,9 +180,9 @@ let my: MyData = serde_json::from_str(json_input)?;
 my.validate()?; // You must remember to call this!
 ```
 
-Risk: You can forget to call .validate(), and the data was already used.
+Risk: Forgeting to call `.validate()` could end horribly, everything is runtime-based.
 
-### nom — Binary parsing with separate validation
+#### nom — Binary parsing with separate validation
 
 ```rust
 use nom::{bytes::complete::take, IResult};
@@ -209,7 +201,7 @@ if my_data[0] != 42 {
 
 Risk: Parsing and validation are disconnected. It's easy to skip checks.
 
-### briny — Enforced trust boundaries at the type level
+#### briny — Enforced trust boundaries at the type level
 
 ```rust
 use briny::prelude::*;
@@ -240,8 +232,6 @@ trusted.get(); // Fully safe
 
 Guaranteed: Data must be validated before it compiles. No unsafe access is even possible without going through the Validate gate.
 
----
-
 ## Raw Bytes
 
 Use `ByteBuf<T, N>` to handle fixed-size byte arrays before parsing:
@@ -260,20 +250,11 @@ This is useful when reading from sockets, files, or hardware registers.
 
 ### Prelude
 
-Briny provides a prelude module for ergonomic imports:
+`briny` provides a prelude module for ergonomic imports:
 
 ```rust
 use briny::prelude::*;
 // brings in: Validate, TrustedData, UntrustedData, Pack, Unpack, etc.
-```
-
-## Install
-
-Add to your `Cargo.toml`:
-
-```toml
-[dependencies]
-briny = "0.1.0"
 ```
 
 This crate is #![no_std], fully portable, and ideal for embedded and security-critical systems.
@@ -285,6 +266,7 @@ This crate is #![no_std], fully portable, and ideal for embedded and security-cr
 - [*] Fully tested (integration and unit tests)
 - [*] No dependencies
 - [*] `#![no_std]` support
+- [*] Not dependent on `alloc`
 - [!] Community audits welcome
 
 ## Contributing

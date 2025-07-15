@@ -10,25 +10,29 @@
 //! - Packing assumes the data is valid and trusted
 //! - Unpacking always performs validation before returning a usable value
 
-use crate::trust::{ValidationError, TrustedData};
+use crate::trust::{TrustedData, ValidationError};
 
 /// Trait for types that can be serialized into a binary format.
 ///
 /// Implementations must ensure the resulting encoding is correct and canonical.
-///
-/// # Errors
-/// Returns [`ValidationError`] if encoding fails (e.g., insufficient space or inconsistent data).
 pub trait Pack {
+    /// Attempts to encode a `PackRef<'_>` in a custom format.
+    ///
+    /// # Errors
+    /// Returns [`ValidationError`] if encoding fails (e.g., insufficient space or inconsistent data).
+    #[must_use]
     fn pack(&self, out: PackRef<'_>) -> Result<(), ValidationError>;
 }
 
 /// Trait for types that can be deserialized from raw bytes *and validated*.
 ///
 /// This ensures that all unpacked values are trusted and structurally sound.
-///
-/// # Returns
-/// A [`TrustedData<T>`] on success, or [`ValidationError`] if the bytes are invalid.
 pub trait Unpack: Sized {
+    /// Attempts to decode from an `UnpackBuf<'_>` wrapped in `TrustedData`.
+    ///
+    /// # Returns
+    /// A [`TrustedData<T>`] on success, or [`ValidationError`] if the bytes are invalid.
+    #[must_use]
     fn unpack_and_validate(input: UnpackBuf<'_>) -> Result<TrustedData<'_, Self>, ValidationError>;
 }
 
@@ -43,24 +47,28 @@ pub struct PackRef<'a> {
 impl<'a> PackRef<'a> {
     /// Create a new [`PackRef`] from a mutable byte slice.
     #[must_use]
-    pub fn new(buf: &'a mut [u8]) -> Self {
+    #[inline(always)]
+    pub const fn new(buf: &'a mut [u8]) -> Self {
         Self { buf }
     }
 
     /// Get a mutable reference to the inner buffer.
-    pub fn ref_mut(&mut self) -> &mut [u8] {
+    #[inline(always)]
+    pub const fn ref_mut(&mut self) -> &mut [u8] {
         self.buf
     }
 
     /// Length of the writable buffer (in bytes).
     #[must_use]
-    pub fn len(&self) -> usize {
+    #[inline(always)]
+    pub const fn len(&self) -> usize {
         self.buf.len()
     }
 
     /// Returns `true` if the buffer is empty.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    #[inline(always)]
+    pub const fn is_empty(&self) -> bool {
         self.buf.is_empty()
     }
 }
@@ -76,24 +84,44 @@ pub struct UnpackBuf<'a> {
 impl<'a> UnpackBuf<'a> {
     /// Create a new [`UnpackBuf`] from a read-only byte slice.
     #[must_use]
-    pub fn new(buf: &'a [u8]) -> Self {
+    #[inline(always)]
+    pub const fn new(buf: &'a [u8]) -> Self {
         Self { buf }
     }
 
     /// Get a reference to the inner byte slice.
-    pub fn as_slice(&self) -> &[u8] {
+    #[inline(always)]
+    pub const fn as_slice(&self) -> &[u8] {
         self.buf
     }
 
     /// Length of the readable buffer (in bytes).
     #[must_use]
-    pub fn len(&self) -> usize {
+    #[inline(always)]
+    pub const fn len(&self) -> usize {
         self.buf.len()
     }
 
     /// Returns `true` if the buffer is empty.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    #[inline(always)]
+    pub const fn is_empty(&self) -> bool {
         self.buf.is_empty()
+    }
+
+    /// Attempts to convert the underlying slice into an array of fixed size `N`.
+    ///
+    /// # Errors
+    /// Returns a `ValidationError` if the slice length does not exactly match `N`.
+    #[must_use]
+    #[inline(always)]
+    pub fn try_into_array<const N: usize>(&self) -> Result<[u8; N], ValidationError> {
+        let slice = self.as_slice(); // assuming this
+        if slice.len() != N {
+            return Err(ValidationError);
+        }
+        let mut out = [0u8; N];
+        out.copy_from_slice(&slice[..N]);
+        Ok(out)
     }
 }

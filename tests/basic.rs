@@ -1,6 +1,6 @@
 use briny::prelude::*;
-use briny::trust::{ValidationError, TrustedData};
 use briny::raw::{ByteBuf, Raw};
+use briny::trust::{TrustedData, ValidationError};
 
 #[derive(Debug)]
 struct MyData(u32);
