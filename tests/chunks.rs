@@ -34,8 +34,8 @@ fn test_chunks_valid() {
     let chunks = buf.chunks::<Dummy, 1>().unwrap();
     let items: Vec<_> = chunks.collect();
     assert_eq!(items.len(), 4);
-    assert_eq!(items[0].value().0, 1);
-    assert_eq!(items[3].value().0, 4);
+    assert_eq!(items[0].as_ref().0, 1);
+    assert_eq!(items[3].as_ref().0, 4);
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn test_chunks_misaligned_returns_err() {
 fn test_as_untrusted() {
     let buf = ByteBuf::<Dummy, 1>::new([42]);
     let val = buf.as_untrusted().unwrap();
-    assert_eq!(val.value().0, 42);
+    assert_eq!(val.as_ref().0, 42);
 }
 
 #[test]
@@ -69,13 +69,13 @@ fn test_try_unpack_invalid() {
 fn test_peek_some() {
     let buf = ByteBuf::<Dummy, 1>::new([99]);
     let val = buf.peek::<Dummy, 1>().unwrap();
-    assert_eq!(val.value().0, 99);
+    assert_eq!(val.as_ref().0, 99);
 }
 
 #[test]
 fn test_pop_some() {
     let buf = ByteBuf::<Dummy, 2>::new([8, 9]);
     let (first, tail) = buf.pop::<Dummy, 1>().unwrap();
-    assert_eq!(first.value().0, 8);
+    assert_eq!(first.as_ref().0, 8);
     assert_eq!(tail, &[9]);
 }

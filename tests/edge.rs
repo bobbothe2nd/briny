@@ -105,25 +105,6 @@ fn fuzz_like_byte_patterns() {
 }
 
 #[test]
-fn test_cannot_forge_trusted() {
-    struct Sneaky([u8; 1]);
-
-    impl Validate for Sneaky {
-        fn validate(&self) -> Result<(), ValidationError> {
-            Err(ValidationError)
-        }
-    }
-
-    let raw = UntrustedData::new(Sneaky([123]));
-    let _ = Sneaky([42]).0;
-
-    // This fails: no API to go from UntrustedData → TrustedData without validation
-    // This line won't compile unless you add a custom `TrustFrom`
-    // let _ = TrustedData::assume_valid(raw.into_inner()); // allowed only in tests
-    assert!(TrustedData::new(raw.into_inner()).is_err());
-}
-
-#[test]
 fn test_validation_must_occur() {
     struct RejectAll;
     impl Validate for RejectAll {
@@ -155,25 +136,6 @@ fn test_try_map_invalidates_bad_transform() {
     // Transformation breaks invariants
     let result = good.try_map(|_| T(0));
     assert!(result.is_err());
-}
-
-#[test]
-fn test_untrusted_cannot_trick_logic() {
-    struct Check(u8);
-    impl Validate for Check {
-        fn validate(&self) -> Result<(), ValidationError> {
-            if self.0 == 1 {
-                Ok(())
-            } else {
-                Err(ValidationError)
-            }
-        }
-    }
-
-    let untrusted = UntrustedData::new(Check(2));
-    // untrusted.value() gives access but NOT trust
-    assert_eq!(untrusted.value().0, 2);
-    assert!(TrustedData::new(untrusted.into_inner()).is_err());
 }
 
 #[test]

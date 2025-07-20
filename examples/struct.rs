@@ -1,8 +1,8 @@
 use briny::prelude::*;
 
-struct MySensitiveStruct(u8);
+struct SensitiveStruct(u8);
 
-impl Validate for MySensitiveStruct {
+impl Validate for SensitiveStruct {
     fn validate(&self) -> Result<(), ValidationError> {
         if self.0 <= 127 {
             Ok(())
@@ -12,21 +12,21 @@ impl Validate for MySensitiveStruct {
     }
 }
 
-impl Pack for MySensitiveStruct {
+impl Pack for SensitiveStruct {
     fn pack(&self, mut out: PackRef) -> Result<(), ValidationError> {
+        // displayed at end
         let buf = out.ref_mut(); // safely access inner &mut [u8]
         if buf.len() < 1 {
             return Err(ValidationError);
         }
-        // displayed at end
         buf[0] = 3; // anything 0-255
         Ok(())
     }
 }
 
 fn main() -> Result<(), ValidationError> {
-    let raw = MySensitiveStruct(42);
-    let trusted = TrustedData::new(raw)?; // This now works
+    let raw = UntrustedData::new(SensitiveStruct(42));
+    let trusted = TrustedData::new(raw.trust()?.into_inner())?;
 
     let mut buf = [0u8; 1];
     trusted.pack(PackRef::new(&mut buf))?;

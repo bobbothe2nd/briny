@@ -10,7 +10,7 @@
 //! - Packing assumes the data is valid and trusted
 //! - Unpacking always performs validation before returning a usable value
 
-use crate::trust::{TrustedData, ValidationError};
+use crate::trust::{TrustedData, Validate, ValidationError};
 
 /// Trait for types that can be serialized into a binary format.
 ///
@@ -20,26 +20,23 @@ pub trait Pack {
     ///
     /// # Errors
     /// Returns [`ValidationError`] if encoding fails (e.g., insufficient space or inconsistent data).
-    #[must_use]
     fn pack(&self, out: PackRef<'_>) -> Result<(), ValidationError>;
 }
 
 /// Trait for types that can be deserialized from raw bytes *and validated*.
 ///
 /// This ensures that all unpacked values are trusted and structurally sound.
-pub trait Unpack: Sized {
+pub trait Unpack: Sized + Validate {
     /// Attempts to decode from an `UnpackBuf<'_>` wrapped in `TrustedData`.
     ///
     /// # Returns
     /// A [`TrustedData<T>`] on success, or [`ValidationError`] if the bytes are invalid.
-    #[must_use]
     fn unpack_and_validate(input: UnpackBuf<'_>) -> Result<TrustedData<'_, Self>, ValidationError>;
 }
 
 /// A mutable slice wrapper used to write serialized binary data.
 ///
 /// Used as the output buffer for [`Pack`] implementations.
-#[derive(Debug)]
 pub struct PackRef<'a> {
     buf: &'a mut [u8],
 }
@@ -76,7 +73,6 @@ impl<'a> PackRef<'a> {
 /// An immutable slice wrapper used to read and validate structured data.
 ///
 /// Used as the input buffer for [`Unpack`] implementations.
-#[derive(Debug)]
 pub struct UnpackBuf<'a> {
     buf: &'a [u8],
 }
@@ -113,7 +109,6 @@ impl<'a> UnpackBuf<'a> {
     ///
     /// # Errors
     /// Returns a `ValidationError` if the slice length does not exactly match `N`.
-    #[must_use]
     #[inline(always)]
     pub fn try_into_array<const N: usize>(&self) -> Result<[u8; N], ValidationError> {
         let slice = self.as_slice(); // assuming this

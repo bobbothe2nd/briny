@@ -1,6 +1,6 @@
 [package]
 name = "briny"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.88.0"
 description = "Low-level foundational utilities for the briny ecosystem"
@@ -16,9 +16,6 @@ categories = [
 ]
 repository = "https://github.com/bobbothe2nd/briny"
 readme = "README.md"
-
-[lib]
-crate-type = ["rlib"]
 
 [profile.release]
 opt-level = "z"

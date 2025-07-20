@@ -3,7 +3,7 @@
 //! This prelude gives you everything needed to use `briny` safely:
 //!
 //! - [`UntrustedData`] and [`TrustedData`]
-//! - [`Validate`], [`Trusted`], and [`Untrusted`] traits
+//! - [`Validate`], and [`Untrusted`] traits
 //! - [`Pack`] and [`Unpack`] for binary I/O
 //! - [`PackRef`] and [`UnpackBuf`] buffer wrappers
 //! - [`ByteBuf`] for raw byte wrapping/parsing

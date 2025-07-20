@@ -56,7 +56,7 @@ fn test_pack_unpack_roundtrip() -> Result<(), Box<dyn core::error::Error>> {
     let input = UnpackBuf::new(&buffer);
     let unpacked = MyData::unpack_and_validate(input)?;
 
-    assert_eq!(unpacked.get(), original.get());
+    assert_eq!(unpacked.as_ref(), original.as_ref());
 
     Ok(())
 }
@@ -93,7 +93,7 @@ fn roundtrip_pack_unpack_u32() -> Result<(), Box<dyn core::error::Error>> {
     let raw = ByteBuf::<MyU32, 4>::new(original.to_bytes());
     let parsed = raw.parse()?;
     let trusted = TrustedData::new(parsed)?;
-    assert_eq!(trusted.get().0, 1337);
+    assert_eq!(trusted.as_ref().0, 1337);
 
     Ok(())
 }

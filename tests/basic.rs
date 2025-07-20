@@ -30,7 +30,7 @@ fn test_valid_trusted_data() {
     let raw = ByteBuf::<MyData, 4>::new(42u32.to_le_bytes());
     let parsed = raw.parse().expect("parse failed");
     let trusted = TrustedData::new(parsed).expect("validation failed");
-    assert_eq!(trusted.get().0, 42);
+    assert_eq!(trusted.as_ref().0, 42);
 }
 
 #[test]

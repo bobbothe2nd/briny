@@ -1,6 +1,6 @@
-# briny
+# `briny`
 
-`briny` is one of the only Rust crates that enforces binary trust boundaries at compile time — zero unsafe, no-alloc, no-macro.
+`briny` is one of the only Rust crates that enforces binary trust boundaries at compile time - zero unsafe, no-alloc, no-macro.
 
 `briny` gives you airtight control over what data is trusted and when. It helps you securely parse, validate, and serialize binary-structured data without ever trusting unchecked input.
 
@@ -16,34 +16,17 @@
 
 ### If you *don't* follow the rules
 
-- It's like misusing `unsafe {}` — *you opt out of the safety net*
+- It's like misusing `unsafe {}` - *you opt out of the safety net*
 - `briny` won't stop you from writing broken or insecure `Validate` impls
 - You can still violate trust boundaries *after* validation, if you ignore discipline
 - `briny` can't enforce runtime misuse beyond the type system.
 
-## Why Use `briny`?
+## Why Use `briny`
 
 - Enforce trust boundaries with marker traits (`Trusted`, `Untrusted`)
 - Zero dependencies and `#![no_std]` compatible - no `alloc` either
 - Built for embedded, security-critical, and sandboxed Rust systems
 - Prevent bugs before you even test for them
-
-### Warning: `briny` Is a Power Tool
-
-`briny` helps you build airtight validation infrastructure — but like `unsafe`, it must be used with care. If downstream crates implement `Validate` incorrectly, or mutate `TrustedData` unsafely, no compile-time model can save you.
-
-Use `briny` to make the safe path easy and the unsafe path obvious.
-
-`briny` is ideal for:
-
-- Hardened OS modules
-- Secure microservices
-- Kernel/user-mode message passing
-- Cryptographic protocols
-- Embedded bootloaders and firmware parsing
-- WASM interfaces
-
-Use `briny` where trust boundaries matter most — and test isn't enough.
 
 ## Features
 
@@ -59,7 +42,7 @@ Use `briny` where trust boundaries matter most — and test isn't enough.
 
 - `UntrustedData<T>`: Marker for unsafe input (from users, network, disk, etc.)
 - `Validate`: Trait that defines the rules for converting untrusted data into trusted form
-- `TrustedData<T>`: Guarantees validation has occurred — only safe data gets in
+- `TrustedData<T>`: Guarantees validation has occurred - only safe data gets in
 - Sealed trait `Trusted` ensures trust cannot be used outside the crate
 
 This ZTA-style model improves security on many frontiers, meaning:
@@ -73,28 +56,28 @@ This ZTA-style model improves security on many frontiers, meaning:
 ```rust
 use briny::prelude::*;
 
-struct MyData([u8; 4]);
+struct Data([u8; 4]);
 
-impl Validate for MyData {
+impl Validate for Data {
     fn validate(&self) -> Result<(), ValidationError> {
         if self.0[0] == 42 { Ok(()) } else { Err(ValidationError) }
     }
 }
 
-impl Pack for MyData {
+impl Pack for Data {
     fn pack(&self, mut out: PackRef<'_>) -> Result<(), ValidationError> {
         out.ref_mut().copy_from_slice(&self.0);
         Ok(())
     }
 }
 
-impl Unpack for MyData {
+impl Unpack for Data {
     fn unpack_and_validate(input: UnpackBuf<'_>) -> Result<TrustedData<'_, Self>, ValidationError> {
         let slice = input.as_slice();
         if slice.len() != 4 {
             return Err(ValidationError);
         }
-        let data = MyData([slice[0], slice[1], slice[2], slice[3]]);
+        let data = Data([slice[0], slice[1], slice[2], slice[3]]);
         TrustedData::new(data)
     }
 }
@@ -104,8 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let external = UntrustedData::new([42, 0, 0, 0]);
 
     // validate the payload
-    let my = MyData(external.into_inner());
-    let trusted = TrustedData::new(my)?;
+    let trusted = TrustedData::new(my.trust()?.into_inner())?;
 
     // serialize it
     let mut buf = [0u8; 4];
@@ -139,34 +121,34 @@ While `briny` enforces trust boundaries at compile time, it's not a one-size-fit
 
 Use `briny` when you need binary-safe, zero-cost, compile-time enforced trust for fixed-layout, embedded, or low-level data structures.
 
-For everything else—especially rich data formats or dynamic validation—consider combining `briny` with crates like `serde`, `validator`, or `nom`.
+For everything else-especially rich data formats or dynamic validation-consider combining `briny` with crates like `serde`, `validator`, or `nom`.
 
 Here is a comparison between `briny`, `serde`, `validator`, and `nom` where each must validate a 4-byte array where the first byte is 42.
 
-#### serde — Deserialization without enforced validation
+#### `serde` - Deserialization without enforced validation
 
 ```rust
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-struct MyData([u8; 4]);
+struct Data([u8; 4]);
 
-// Deserialize blindly, even if data is bad
-let my: MyData = bincode::deserialize(&input_bytes)?;
+// deserialize blindly, even if data is bad
+let my: Data = bincode::deserialize(&input_bytes)?;
 
-// No guarantee this is safe!
+// no guarantee this is safe!
 assert_eq!(my.0[0], 42); // Could panic or be wrong
 ```
 
 Risk: Data is used before it's validated. The deserialized value is implicitly trusted.
 
-#### validator — Runtime validation, trust still implicit
+#### `validator` - Runtime validation, trust still implicit
 
 ```rust
 use validator::{Validate};
 
 #[derive(Validate)]
-struct MyData {
+struct Data {
     #[validate(custom = "validate_first_byte")]
     data: [u8; 4],
 }
@@ -175,14 +157,14 @@ fn validate_first_byte(data: &[u8; 4]) -> Result<(), validator::ValidationError>
     if data[0] == 42 { Ok(()) } else { Err(ValidationError::new("bad")) }
 }
 
-// Data is deserialized before it's validated
-let my: MyData = serde_json::from_str(json_input)?;
+// data is deserialized before it's validated
+let my: Data = serde_json::from_str(json_input)?;
 my.validate()?; // You must remember to call this!
 ```
 
-Risk: Forgeting to call `.validate()` could end horribly, everything is runtime-based.
+Risk: Forgeting to call `.validate()` could end horrifically; everything is runtime-based.
 
-#### nom — Binary parsing with separate validation
+#### `nom` - Binary parsing with separate validation
 
 ```rust
 use nom::{bytes::complete::take, IResult};
@@ -192,7 +174,7 @@ fn parse(input: &[u8]) -> IResult<&[u8], [u8; 4]> {
     Ok((rest, [bytes[0], bytes[1], bytes[2], bytes[3]]))
 }
 
-// Parse succeeds regardless of content
+// parse succeeds regardless of content
 let (_, my_data) = parse(&input_bytes)?;
 if my_data[0] != 42 {
     return Err("bad");
@@ -201,33 +183,33 @@ if my_data[0] != 42 {
 
 Risk: Parsing and validation are disconnected. It's easy to skip checks.
 
-#### briny — Enforced trust boundaries at the type level
+#### `briny` - Enforced trust boundaries at the type level
 
 ```rust
 use briny::prelude::*;
 
-struct MyData([u8; 4]);
+struct Data([u8; 4]);
 
-impl Validate for MyData {
+impl Validate for Data {
     fn validate(&self) -> Result<(), ValidationError> {
         if self.0[0] == 42 { Ok(()) } else { Err(ValidationError) }
     }
 }
 
-impl Unpack for MyData {
+impl Unpack for Data {
     fn unpack_and_validate(input: UnpackBuf<'_>) -> Result<TrustedData<'_, Self>, ValidationError> {
         let slice = input.as_slice();
         if slice.len() != 4 { return Err(ValidationError); }
-        TrustedData::new(MyData([slice[0], slice[1], slice[2], slice[3]]))
+        TrustedData::new(Data([slice[0], slice[1], slice[2], slice[3]]))
     }
 }
 
-// From raw input to trusted, validated value
+// from raw input to trusted, validated value
 let buf = UnpackBuf::new(&input_bytes);
-let trusted: TrustedData<'_, MyData> = MyData::unpack_and_validate(buf)?;
+let trusted: TrustedData<'_, Data> = Data::unpack_and_validate(buf)?;
 
-// Cannot access trusted logic until valid
-trusted.get(); // Fully safe
+// cannot access trusted logic until valid
+trusted.as_ref(); // fully safe
 ```
 
 Guaranteed: Data must be validated before it compiles. No unsafe access is even possible without going through the Validate gate.
@@ -261,13 +243,13 @@ This crate is #![no_std], fully portable, and ideal for embedded and security-cr
 
 ## Project Status
 
-- [*] Security-first API design
-- [*] 100% safe Rust (no unsafe)
-- [*] Fully tested (integration and unit tests)
-- [*] No dependencies
-- [*] `#![no_std]` support
-- [*] Not dependent on `alloc`
-- [!] Community audits welcome
+- Security-first API design
+- 100% safe Rust (no unsafe)
+- Fully tested (integration and unit tests)
+- No dependencies
+- `#![no_std]` support
+- Not dependent on `alloc`
+- Community audits welcome
 
 ## Contributing
 

@@ -12,14 +12,7 @@
 //! - **No allocations**: Fully compatible with `#![no_std]` environments.
 //! - **Trust boundaries encoded in types**: Untrusted data must be validated before use.
 //! - **Composable parsing and serialization**: via `Raw`, `Pack`, `Unpack`, etc.
-//! - **No dependencies**: Pure core-based abstractions for maximum auditability.
-//!
-//! ## Modules
-//!
-//! - [`trust`](crate::trust): Core traits and types for enforcing trust separation.
-//! - [`raw`](crate::raw): Generic fixed-size byte containers for raw binary fields.
-//! - [`pack`](crate::pack): Binary packing and unpacking with validation gates.
-//! - [`prelude`](crate::prelude): Convenient re-exports for core traits.
+//! - **No dependencies**: Pure core-based abstractions for maximum auditability
 //!
 //! ## Example: Validating and Unpacking Raw Data
 //!
@@ -89,9 +82,9 @@
 //! `briny` avoids heap allocation, formatting macros, or panicking branches.
 //! Its design aims to support limited embedded targets (e.g. 32 KiB MCUs).
 
-#![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
 #![forbid(missing_docs)]
+#![no_std]
 
 pub mod pack;
 pub mod prelude;

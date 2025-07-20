@@ -42,7 +42,7 @@ fn test_trusted_lifetime_bound() {
     // simulate untrusted input from some outer context
     let trusted: TrustedData<'_, Demo> = TrustedData::new(value).unwrap();
 
-    assert_eq!(trusted.get().0, 3);
+    assert_eq!(trusted.as_ref().0, 3);
 }
 
 #[test]
@@ -51,11 +51,11 @@ fn test_untrusted_lifetime_anchor() -> Result<(), ValidationError> {
         // this string slice only lives inside this block
         let input = "hi there";
         let untrusted = UntrustedData::new(input);
-        let untrusted_bytes: ByteBuf<Str8, 8> = ByteBuf::from_str(untrusted.into_inner())?;
+        let untrusted_bytes: ByteBuf<Str8, 8> = ByteBuf::from_str(untrusted.as_ref())?;
         TrustedData::new(untrusted_bytes).unwrap()
     };
 
     // If we try to use `result` outside the block, it won't compile unless `'static` or `'a`
-    assert_eq!(result.get(), &ByteBuf::from_str("hi there")?);
+    assert_eq!(result.as_ref(), &ByteBuf::from_str("hi there")?);
     Ok(())
 }
