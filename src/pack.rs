@@ -1,122 +1,69 @@
-//! Trust-aware traits and buffer wrappers for secure binary serialization.
+//! Basic traits for easy binary serialization and optionally compression.
 //!
-//! This module provides:
-//! - [`Pack`] and [`Unpack`]: traits for encoding and decoding structured types
-//! - [`PackRef`] and [`UnpackBuf`]: slice wrappers used during serialization
-//!
-//! All decoded data is *validated at the boundary* and returned as [`TrustedData<T>`].
-//!
-//! # Trust model
-//! - Packing assumes the data is valid and trusted
-//! - Unpacking always performs validation before returning a usable value
+//! Pain is not a prerequisite: no forced validation or complicated methods.
 
-use crate::trust::{TrustedData, Validate, ValidationError};
+use crate::raw::ptr::ImpConst;
 
-/// Trait for types that can be serialized into a binary format.
-///
-/// Implementations must ensure the resulting encoding is correct and canonical.
+/// Trait for data that can be packed or compressed.
 pub trait Pack {
-    /// Attempts to encode a `PackRef<'_>` in a custom format.
-    ///
-    /// # Errors
-    /// Returns [`ValidationError`] if encoding fails (e.g., insufficient space or inconsistent data).
-    fn pack(&self, out: PackRef<'_>) -> Result<(), ValidationError>;
+    /// Method to pack data.
+    fn pack<'a, T: Pack + Unpack>(&self) -> Packed<'a, T>;
+
+    /// Method to compress data.
+    fn compress<'a, T: Pack + Unpack>(&self) -> Packed<'a, T> {
+        self.pack()
+    }
 }
 
-/// Trait for types that can be deserialized from raw bytes *and validated*.
+/// Trait for data that can be unpacked or decompressed.
+pub trait Unpack {
+    /// Method to unpack data.
+    fn unpack<'a, T: Unpack + Pack>(&self) -> Unpacked<'a, T>;
+
+    /// Method to decompress data.
+    fn decompress<'a, T: Unpack + Pack>(&self) -> Unpacked<'a, T> {
+        self.unpack()
+    }
+}
+
+/// A wrapper for packed data.
 ///
-/// This ensures that all unpacked values are trusted and structurally sound.
-pub trait Unpack: Sized + Validate {
-    /// Attempts to decode from an `UnpackBuf<'_>` wrapped in `TrustedData`.
-    ///
-    /// # Returns
-    /// A [`TrustedData<T>`] on success, or [`ValidationError`] if the bytes are invalid.
-    fn unpack_and_validate(input: UnpackBuf<'_>) -> Result<TrustedData<'_, Self>, ValidationError>;
+/// Holds a pointer to the inner value.
+pub struct Packed<'a, T: Pack + Unpack> {
+    ptr: ImpConst<'a, T>,
 }
 
-/// A mutable slice wrapper used to write serialized binary data.
+impl<'a, T: Pack + Unpack> Packed<'a, T> {
+    /// Creates a new `Packed` structure with a pointer to the provided data.
+    pub const fn new(data: &'a T) -> Self {
+        let ptr = ImpConst::new(data);
+        Self { ptr }
+    }
+
+    /// Provides a reference to the value the pointer is pointing to.
+    #[must_use]
+    pub const fn as_ref(&self) -> &T {
+        self.ptr.as_ref()
+    }
+}
+
+/// A wrapper for unpacked data.
 ///
-/// Used as the output buffer for [`Pack`] implementations.
-pub struct PackRef<'a> {
-    buf: &'a mut [u8],
+/// Holds a pointer to the inner value.
+pub struct Unpacked<'a, T: Pack> {
+    data: ImpConst<'a, T>,
 }
 
-impl<'a> PackRef<'a> {
-    /// Create a new [`PackRef`] from a mutable byte slice.
+impl<'a, T: Pack + Unpack> Unpacked<'a, T> {
+    /// Creates a new `Unpacked` structure with a pointer to the provided data.
+    pub const fn new(data: &'a T) -> Self {
+        let ptr = ImpConst::new(data);
+        Self { data: ptr }
+    }
+
+    /// Provides a reference to the value the pointer is pointing to.
     #[must_use]
-    #[inline(always)]
-    pub const fn new(buf: &'a mut [u8]) -> Self {
-        Self { buf }
-    }
-
-    /// Get a mutable reference to the inner buffer.
-    #[inline(always)]
-    pub const fn ref_mut(&mut self) -> &mut [u8] {
-        self.buf
-    }
-
-    /// Length of the writable buffer (in bytes).
-    #[must_use]
-    #[inline(always)]
-    pub const fn len(&self) -> usize {
-        self.buf.len()
-    }
-
-    /// Returns `true` if the buffer is empty.
-    #[must_use]
-    #[inline(always)]
-    pub const fn is_empty(&self) -> bool {
-        self.buf.is_empty()
-    }
-}
-
-/// An immutable slice wrapper used to read and validate structured data.
-///
-/// Used as the input buffer for [`Unpack`] implementations.
-pub struct UnpackBuf<'a> {
-    buf: &'a [u8],
-}
-
-impl<'a> UnpackBuf<'a> {
-    /// Create a new [`UnpackBuf`] from a read-only byte slice.
-    #[must_use]
-    #[inline(always)]
-    pub const fn new(buf: &'a [u8]) -> Self {
-        Self { buf }
-    }
-
-    /// Get a reference to the inner byte slice.
-    #[inline(always)]
-    pub const fn as_slice(&self) -> &[u8] {
-        self.buf
-    }
-
-    /// Length of the readable buffer (in bytes).
-    #[must_use]
-    #[inline(always)]
-    pub const fn len(&self) -> usize {
-        self.buf.len()
-    }
-
-    /// Returns `true` if the buffer is empty.
-    #[must_use]
-    #[inline(always)]
-    pub const fn is_empty(&self) -> bool {
-        self.buf.is_empty()
-    }
-
-    /// Attempts to convert the underlying slice into an array of fixed size `N`.
-    ///
-    /// # Errors
-    /// Returns a `ValidationError` if the slice length does not exactly match `N`.
-    #[inline(always)]
-    pub fn try_into_array<const N: usize>(&self) -> Result<[u8; N], ValidationError> {
-        let slice = self.as_slice(); // assuming this
-        if slice.len() != N {
-            return Err(ValidationError);
-        }
-        let mut out = [0u8; N];
-        out.copy_from_slice(&slice[..N]);
-        Ok(out)
+    pub const fn as_ref(&self) -> &T {
+        self.data.as_ref()
     }
 }

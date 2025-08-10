@@ -1,25 +1,25 @@
 [package]
 name = "briny"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.88.0"
-description = "Low-level foundational utilities for the briny ecosystem"
+description = "Low-level enforcement of memory layout integrity"
 license = "MIT"
 documentation = "https://docs.rs/briny"
-keywords = ["security", "validation", "no_std", "zta", "no_alloc"]
+keywords = ["security", "efficient", "no_std", "memory", "no_alloc"]
 categories = [
     "no-std",
     "embedded",
-    "cryptography",
     "data-structures",
+    "memory-management",
     "no-std::no-alloc",
 ]
 repository = "https://github.com/bobbothe2nd/briny"
 readme = "README.md"
 
-[profile.release]
-opt-level = "z"
-lto = true
-panic = "abort"
-codegen-units = 1
-strip = true
+[dependencies]
+# briny_derive = { path = "../briny_derive", optional = true }
+
+[features]
+# default = ["derive"]
+# derive = ["dep:briny_derive"]

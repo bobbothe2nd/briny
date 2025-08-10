@@ -1,245 +1,57 @@
 # `briny`
 
-`briny` is one of the only Rust crates that enforces binary trust boundaries at compile time - zero unsafe, no-alloc, no-macro.
+`briny` is a small, secure crate that prevents many memory bugs with a safe API - sometimes it can help prevent undefined behavior at compile time.
 
-`briny` gives you airtight control over what data is trusted and when. It helps you securely parse, validate, and serialize binary-structured data without ever trusting unchecked input.
+## Overview
 
-## What Makes `briny` Different?
+### `briny` `v0.3.0` is a complete rewrite
 
-`briny` enforces Zero Trust Architecture (ZTA) principles at compile time. Just like Rust's ownership system prevents memory safety bugs before runtime, `briny` prevents logic from touching untrusted or unvalidated input. No hopeful parsing, no runtime footguns.
+This crate no longer enforces Zero Trust Architecture via Rust's type system.
+It is now more focused on safe synchronization and memory usage (Although some traits like `Validate` still exist in improved forms...).
 
-### If you follow `briny`'s rules
+`briny` is a low-level Rust crate focused on **safe memory handling in `no_std` environments**.
 
-- All external data must pass `Validate` before use
-- All deserialized structures are wrapped in `TrustedData`
-- No logic can access unchecked input without being explicit
+`v0.3.0` is a **complete rewrite** over `v0.2.0`, shifting its primary intent from validating external input to **preventing internal memory hazards**.  
+This release emphasizes safety at the systems level - making data races, undefined behavior, and unsafe casting much harder to introduce accidentally.
 
-### If you *don't* follow the rules
+## Core Philosophy
 
-- It's like misusing `unsafe {}` - *you opt out of the safety net*
-- `briny` won't stop you from writing broken or insecure `Validate` impls
-- You can still violate trust boundaries *after* validation, if you ignore discipline
-- `briny` can't enforce runtime misuse beyond the type system.
+briny encapsulates the minimal necessary use of `unsafe` to provide:
 
-## Why Use `briny`
+- **Thread-safe shared ownership** without relying on the standard library.
+- **Controlled interior mutability** without the pitfalls of raw `UnsafeCell`.
+- **Safe, validated type casting** for both sized and unsized types.
+- **Portable, allocation-agnostic primitives** suitable for embedded, kernel, and bare-metal environments.
 
-- Enforce trust boundaries with marker traits (`Trusted`, `Untrusted`)
-- Zero dependencies and `#![no_std]` compatible - no `alloc` either
-- Built for embedded, security-critical, and sandboxed Rust systems
-- Prevent bugs before you even test for them
+The crate avoids over-engineered abstractions, prioritizing **direct, minimal, and predictable primitives** with well-defined safety boundaries.
 
-## Features
+## Key Architectural Additions
 
-- Zero Trust Architecture (ZTA)–aligned
-- Binary-safe serialization via `Pack`/`Unpack`
-- Trusted vs. untrusted data split at the type level
-- Fixed-size byte buffer abstraction (`ByteBuf<T, N>`)
-- Dependency-free (no `std` or `alloc`)
+### Allocation-Free Thread-Safe References
 
-### Trust Model
+`Darc` (Direct ARC) and `Naarc` (Non-Alloc ARC) offer reference counting for shared data **without requiring heap allocation** and without using `std`.  
+Both are designed to be `Send + Sync` when the underlying type permits, enabling multi-threaded designs in `no_std` or constrained environments.
+Due to their inherent simplicity, they can usually perform better than `Arc`.
 
-`briny` enforces explicit trust boundaries using:
+### Safer Interior Mutability
 
-- `UntrustedData<T>`: Marker for unsafe input (from users, network, disk, etc.)
-- `Validate`: Trait that defines the rules for converting untrusted data into trusted form
-- `TrustedData<T>`: Guarantees validation has occurred - only safe data gets in
-- Sealed trait `Trusted` ensures trust cannot be used outside the crate
+`NotUnsafeCell` replaces ad-hoc `UnsafeCell` usage with a structured, safety-checked API.  
+It preserves the flexibility of interior mutability while significantly reducing the risk of unsound aliasing or reentrant access.
 
-This ZTA-style model improves security on many frontiers, meaning:
+### Safe Casting for Sized and Unsized Types
 
-- No unchecked logic runs on untrusted data
-- All transitions are explicit and type-checked
-- You *can't* forget to validate
+`briny` provides casting utilities that:
 
-## Example
+- Validate alignment, size, and bit-pattern safety before reinterpretation.
+- Support unsized types, including slices and trait objects.
+- Eliminate undefined behavior from unchecked `transmute` usage.
 
-```rust
-use briny::prelude::*;
+## Design Goals
 
-struct Data([u8; 4]);
-
-impl Validate for Data {
-    fn validate(&self) -> Result<(), ValidationError> {
-        if self.0[0] == 42 { Ok(()) } else { Err(ValidationError) }
-    }
-}
-
-impl Pack for Data {
-    fn pack(&self, mut out: PackRef<'_>) -> Result<(), ValidationError> {
-        out.ref_mut().copy_from_slice(&self.0);
-        Ok(())
-    }
-}
-
-impl Unpack for Data {
-    fn unpack_and_validate(input: UnpackBuf<'_>) -> Result<TrustedData<'_, Self>, ValidationError> {
-        let slice = input.as_slice();
-        if slice.len() != 4 {
-            return Err(ValidationError);
-        }
-        let data = Data([slice[0], slice[1], slice[2], slice[3]]);
-        TrustedData::new(data)
-    }
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // random bytes
-    let external = UntrustedData::new([42, 0, 0, 0]);
-
-    // validate the payload
-    let trusted = TrustedData::new(my.trust()?.into_inner())?;
-
-    // serialize it
-    let mut buf = [0u8; 4];
-    trusted.pack(PackRef::new(&mut buf))?;
-    assert_eq!(buf, [42, 0, 0, 0]);
-    
-    Ok(())
-}
-```
-
-## Comparison
-
-| Feature | `serde` | `validator` | `nom` | `briny` |
-|-----------------------------------|:-:|:-:|:-:|:-:|
-| Compile-time security guarantees  | N | N | N | Y |
-| Blocks parsing before validation  | N | N | N | Y |
-| Validation enforced by compiler   | N | N | N | Y |
-| Type-level trust separation       | N | N | N | Y |
-| `no_std` compatible               | ~ | N | Y | Y |
-| Accidental bypasses impossible    | N | N | N | Y |
-
-### What `briny` Does Not Do
-
-While `briny` enforces trust boundaries at compile time, it's not a one-size-fits-all validation framework. It doesn't...
-
-- Parse or validate complex or nested data formats like JSON, XML, or YAML.
-- Handle cryptographic operations or key management.
-- Provide runtime-configurable validation rules or dynamic schema updates.
-- Offer detailed validation error reporting with rich diagnostics.
-- Support heap allocations or complex data structures requiring `std` or `alloc`.
-
-Use `briny` when you need binary-safe, zero-cost, compile-time enforced trust for fixed-layout, embedded, or low-level data structures.
-
-For everything else-especially rich data formats or dynamic validation-consider combining `briny` with crates like `serde`, `validator`, or `nom`.
-
-Here is a comparison between `briny`, `serde`, `validator`, and `nom` where each must validate a 4-byte array where the first byte is 42.
-
-#### `serde` - Deserialization without enforced validation
-
-```rust
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct Data([u8; 4]);
-
-// deserialize blindly, even if data is bad
-let my: Data = bincode::deserialize(&input_bytes)?;
-
-// no guarantee this is safe!
-assert_eq!(my.0[0], 42); // Could panic or be wrong
-```
-
-Risk: Data is used before it's validated. The deserialized value is implicitly trusted.
-
-#### `validator` - Runtime validation, trust still implicit
-
-```rust
-use validator::{Validate};
-
-#[derive(Validate)]
-struct Data {
-    #[validate(custom = "validate_first_byte")]
-    data: [u8; 4],
-}
-
-fn validate_first_byte(data: &[u8; 4]) -> Result<(), validator::ValidationError> {
-    if data[0] == 42 { Ok(()) } else { Err(ValidationError::new("bad")) }
-}
-
-// data is deserialized before it's validated
-let my: Data = serde_json::from_str(json_input)?;
-my.validate()?; // You must remember to call this!
-```
-
-Risk: Forgeting to call `.validate()` could end horrifically; everything is runtime-based.
-
-#### `nom` - Binary parsing with separate validation
-
-```rust
-use nom::{bytes::complete::take, IResult};
-
-fn parse(input: &[u8]) -> IResult<&[u8], [u8; 4]> {
-    let (rest, bytes) = take(4usize)(input)?;
-    Ok((rest, [bytes[0], bytes[1], bytes[2], bytes[3]]))
-}
-
-// parse succeeds regardless of content
-let (_, my_data) = parse(&input_bytes)?;
-if my_data[0] != 42 {
-    return Err("bad");
-}
-```
-
-Risk: Parsing and validation are disconnected. It's easy to skip checks.
-
-#### `briny` - Enforced trust boundaries at the type level
-
-```rust
-use briny::prelude::*;
-
-struct Data([u8; 4]);
-
-impl Validate for Data {
-    fn validate(&self) -> Result<(), ValidationError> {
-        if self.0[0] == 42 { Ok(()) } else { Err(ValidationError) }
-    }
-}
-
-impl Unpack for Data {
-    fn unpack_and_validate(input: UnpackBuf<'_>) -> Result<TrustedData<'_, Self>, ValidationError> {
-        let slice = input.as_slice();
-        if slice.len() != 4 { return Err(ValidationError); }
-        TrustedData::new(Data([slice[0], slice[1], slice[2], slice[3]]))
-    }
-}
-
-// from raw input to trusted, validated value
-let buf = UnpackBuf::new(&input_bytes);
-let trusted: TrustedData<'_, Data> = Data::unpack_and_validate(buf)?;
-
-// cannot access trusted logic until valid
-trusted.as_ref(); // fully safe
-```
-
-Guaranteed: Data must be validated before it compiles. No unsafe access is even possible without going through the Validate gate.
-
-## Raw Bytes
-
-Use `ByteBuf<T, N>` to handle fixed-size byte arrays before parsing:
-
-```rust
-use briny::prelude::*;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let input = ByteBuf::<u32, 4>::new(42u32.to_le_bytes());
-    let _parsed = input.parse()?; // validated and parsed as u32
-    Ok(())
-}
-```
-
-This is useful when reading from sockets, files, or hardware registers.
-
-### Prelude
-
-`briny` provides a prelude module for ergonomic imports:
-
-```rust
-use briny::prelude::*;
-// brings in: Validate, TrustedData, UntrustedData, Pack, Unpack, etc.
-```
-
-This crate is #![no_std], fully portable, and ideal for embedded and security-critical systems.
+- **`no_std` First** - Fully functional without the standard library, with optional `alloc` support.
+- **Safety-Oriented** - Encapsulate `unsafe` so it is not spread throughout downstream code.
+- **Thread-Aware** - Provide concurrency primitives for systems without `std::sync`.
+- **Fuzz-Resistant** - Handle edge-case and malformed inputs gracefully at the memory level.
 
 ## Project Status
 
@@ -248,7 +60,7 @@ This crate is #![no_std], fully portable, and ideal for embedded and security-cr
 - Fully tested (integration and unit tests)
 - No dependencies
 - `#![no_std]` support
-- Not dependent on `alloc`
+- Not dependent on `alloc` or `std`
 - Community audits welcome
 
 ## Contributing

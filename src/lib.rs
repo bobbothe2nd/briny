@@ -1,92 +1,106 @@
-//! # briny
-//!
-//! A zero-unsafe, `#![no_std]` library for securely handling untrusted binary data.
-//!
-//! `briny` enforces strict trust boundaries between unvalidated input and
-//! verified, structured data. Its design ensures that parsing, validation, and
-//! access are **explicit**, **safe**, and **clear at the type level**.
-//!
-//! ## Core Principles
-//!
-//! - **No unsafe code**: Guaranteed by `#![forbid(unsafe_code)]`.
-//! - **No allocations**: Fully compatible with `#![no_std]` environments.
-//! - **Trust boundaries encoded in types**: Untrusted data must be validated before use.
-//! - **Composable parsing and serialization**: via `Raw`, `Pack`, `Unpack`, etc.
-//! - **No dependencies**: Pure core-based abstractions for maximum auditability
-//!
-//! ## Example: Validating and Unpacking Raw Data
-//!
-//! ```rust
-//! use briny::prelude::*;
-//!
-//! #[derive(Debug)]
-//! struct MyData(u32);
-//!
-//! impl Validate for MyData {
-//!     fn validate(&self) -> Result<(), ValidationError> {
-//!         if self.0 < 100 { Ok(()) } else { Err(ValidationError) }
-//!     }
-//! }
-//!
-//! impl Raw<4> for MyData {
-//!     fn from_bytes(bytes: [u8; 4]) -> Result<Self, ValidationError> {
-//!         Ok(MyData(u32::from_le_bytes(bytes)))
-//!     }
-//!
-//!     fn to_bytes(&self) -> [u8; 4] {
-//!         self.0.to_le_bytes()
-//!     }
-//! }
-//!
-//! fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let raw = ByteBuf::<MyData, 4>::new(42u32.to_le_bytes());
-//!     let parsed = raw.parse()?; // parsed is MyData
-//!     let trusted = TrustedData::new(parsed)?; // now this works, because MyData: Validate
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ### Reccomendations
-//!
-//! The prelude module contains most items and it is reccomended, when using many
-//! features, to begin a crate with the following:
-//!
-//! ```rust
-//! use briny::prelude::*;
-//! ```
-//!
-//! This is especially important when using `ByteBuf::from_str()` which requires the
-//! trait `core::str::FromStr` to be properly utilized.
-//!
-//! ## Who Should Use This?
-//!
-//! - Embedded developers parsing network/protocol data
-//! - Cryptographic libraries enforcing strict validation before processing
-//! - Any `no_std` crate with a hard requirement on memory safety and correctness
-//!
-//! ## Feature Goals
-//!
-//! - [X] No unsafe
-//! - [X] No dependencies
-//! - [X] No allocation
-//! - [ ] Support endian-specific parsing (`BigEndian`, `LittleEndian`)
-//! - [ ] Derive macros for `Raw` and `Validate` (via optional proc-macro crate)
-//!
-//! ## Security Note
-//!
-//! This crate is intentionally restrictive. If something feels tedious, it's likely
-//! because the operation requires *explicit trust handling*. The goal is to force
-//! thoughtful design, especially in security-critical environments.
-//!
-//! ## Binary size
-//! `briny` avoids heap allocation, formatting macros, or panicking branches.
-//! Its design aims to support limited embedded targets (e.g. 32 KiB MCUs).
+//! Functions, traits, methods, and types to improve security *and* simplicity.
 
-#![forbid(unsafe_code)]
 #![forbid(missing_docs)]
+#![forbid(unused_must_use)]
+#![forbid(clippy::all)]
+#![forbid(clippy::nursery)]
+#![forbid(clippy::pedantic)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::unwrap_used)]
+#![deny(unsafe_code)]
 #![no_std]
 
+#[cfg(test)]
+extern crate std;
+
+/// A general error for anything that goes wrong internally.
+///
+/// # Examples
+///
+/// Common examples include:
+///
+/// - Raw data is invalid
+/// - Packing data failed
+/// - Validation comes short
+#[derive(Debug)]
+pub struct BrinyError;
+
+impl core::fmt::Display for BrinyError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "{self:?}")
+    }
+}
+impl core::error::Error for BrinyError {}
+
+impl SafeMemory for BrinyError {}
+#[allow(unsafe_code)]
+unsafe impl crate::raw::Pod for BrinyError {}
+
 pub mod pack;
-pub mod prelude;
+#[allow(unsafe_code)]
 pub mod raw;
-pub mod trust;
+pub mod valid;
+
+/// A simple marker trait which tells the program that a type is safe to operate on in most cases.
+///
+/// For stricter requirements and better rewards, try `Pod`.
+///
+/// # Safety
+///
+/// Memory can't be guaranteed safe without explicit checks, hence the constant `_ASSERTIONS`.
+// Procedurally deriving this trait verifies that it's safe, so it's reccomended to use this:
+//
+// ```rust
+// use briny::SafeMemory;
+//
+// #[derive(SafeMemory)]
+// #[repr(C)]
+// pub struct Foo {
+//     a: u16,
+//     b: u32,
+//     c: u64,
+// }
+// ```
+///
+// Rather than manually implementing it:
+//
+// ```rust
+// pub struct Foo {
+//     a: u16,
+//     b: u32,
+//     c: u64,
+// }
+//
+// impl briny::SafeMemory for Foo {}
+// ```
+//
+// Since `SafeMemory` reccomends predictable layout (like `#[repr(C)]`), the former is  Deriving the trait catches implementations and raises helpful compiler errors, allowing you to fix them.
+pub trait SafeMemory {
+    /// Optional `const` assertions to ensure complete safety.
+    ///
+    /// If they fail, a compiler error will be thrown.
+    const _ASSERTIONS: () = ();
+}
+
+impl SafeMemory for u8 {}
+impl SafeMemory for u16 {}
+impl SafeMemory for u32 {}
+impl SafeMemory for u64 {}
+impl SafeMemory for usize {}
+impl SafeMemory for u128 {}
+impl SafeMemory for i8 {}
+impl SafeMemory for i16 {}
+impl SafeMemory for i32 {}
+impl SafeMemory for i64 {}
+impl SafeMemory for isize {}
+impl SafeMemory for i128 {}
+impl SafeMemory for f32 {}
+impl SafeMemory for f64 {}
+impl<T: SafeMemory, const N: usize> SafeMemory for [T; N] {}
+impl<T: SafeMemory> SafeMemory for core::mem::MaybeUninit<T> {}
+
+// #[cfg(feature = "derive")]
+// pub use briny_derive::SafeMemory;
+
+// #[cfg(feature = "derive")]
+// pub use briny_derive::Pod;
