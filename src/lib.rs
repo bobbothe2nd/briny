@@ -7,11 +7,10 @@
 #![forbid(clippy::pedantic)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::unwrap_used)]
-#![deny(unsafe_code)]
 #![no_std]
 
-#[cfg(test)]
-extern crate std;
+// #[cfg(feature = "derive")]
+// pub use briny_derive::{Pod, SafeMemory};
 
 /// A general error for anything that goes wrong internally.
 ///
@@ -20,8 +19,8 @@ extern crate std;
 /// Common examples include:
 ///
 /// - Raw data is invalid
-/// - Packing data failed
-/// - Validation comes short
+/// - Memory is unaligned
+/// - Types have incorrect sizes
 #[derive(Debug)]
 pub struct BrinyError;
 
@@ -33,12 +32,11 @@ impl core::fmt::Display for BrinyError {
 impl core::error::Error for BrinyError {}
 
 impl SafeMemory for BrinyError {}
-#[allow(unsafe_code)]
 unsafe impl crate::raw::Pod for BrinyError {}
 
 pub mod pack;
-#[allow(unsafe_code)]
 pub mod raw;
+pub use raw::*;
 pub mod valid;
 
 /// A simple marker trait which tells the program that a type is safe to operate on in most cases.

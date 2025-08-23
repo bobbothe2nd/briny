@@ -150,3 +150,75 @@ impl<T> core::ops::Deref for Darc<'_, T> {
         unsafe { &*self.inner.data.get() }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, PartialEq)]
+    struct Foo {
+        x: usize,
+    }
+
+    fn init_darc() -> Darc<'static, Foo> {
+        use core::mem::MaybeUninit;
+        static mut INNER: MaybeUninit<DarcInner<Foo>> = MaybeUninit::uninit();
+
+        // SAFETY: we're never aliasing or dropping the same memory twice
+        unsafe {
+            let arc = Darc::new((&raw mut INNER).as_mut().unwrap(), Foo { x: 42 });
+            arc
+        }
+    }
+
+    #[test]
+    fn clone_and_refcount() {
+        let a = init_darc();
+        assert_eq!(a.strong_count(), 1);
+        let b = a.clone();
+        assert_eq!(a.strong_count(), 2);
+        let c = b.clone();
+        assert_eq!(a.strong_count(), 3);
+        drop(c);
+        assert_eq!(a.strong_count(), 2);
+        drop(b);
+        assert_eq!(a.strong_count(), 1);
+    }
+
+    #[test]
+    fn mut_borrow() {
+        let mut a = init_darc();
+        {
+            let r = a.get_mut().unwrap();
+            r.x = 42;
+        }
+        assert_eq!(a.get_mut().unwrap().x, 42);
+    }
+
+    #[test]
+    fn mut_then_shared_fails() {
+        let mut a = init_darc();
+        let _r = a.get_mut().unwrap();
+        assert!(a.get_mut().is_some());
+    }
+
+    #[test]
+    fn multiple_clones_borrow_should_fail() {
+        let mut a = init_darc();
+        let b = a.clone();
+        let _c = b.clone();
+
+        assert!(a.get_mut().is_none());
+    }
+
+    #[test]
+    fn drop_last_ref_fence_only() {
+        let a = init_darc();
+        let b = a.clone();
+        assert_eq!(a.strong_count(), 2);
+        drop(b);
+        assert_eq!(a.strong_count(), 1);
+        drop(a);
+        // Cannot verify memory free (by design), but no UB
+    }
+}

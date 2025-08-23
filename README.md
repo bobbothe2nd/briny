@@ -4,16 +4,6 @@
 
 ## Overview
 
-### `briny` `v0.3.0` is a complete rewrite
-
-This crate no longer enforces Zero Trust Architecture via Rust's type system.
-It is now more focused on safe synchronization and memory usage (Although some traits like `Validate` still exist in improved forms...).
-
-`briny` is a low-level Rust crate focused on **safe memory handling in `no_std` environments**.
-
-`v0.3.0` is a **complete rewrite** over `v0.2.0`, shifting its primary intent from validating external input to **preventing internal memory hazards**.  
-This release emphasizes safety at the systems level - making data races, undefined behavior, and unsafe casting much harder to introduce accidentally.
-
 ## Core Philosophy
 
 briny encapsulates the minimal necessary use of `unsafe` to provide:
