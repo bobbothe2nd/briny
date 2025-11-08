@@ -1,25 +1,6 @@
-[package]
-name = "briny"
-version = "0.3.1"
-edition = "2024"
-rust-version = "1.88.0"
-description = "Low-level enforcement of memory layout integrity"
-license = "MIT"
-documentation = "https://docs.rs/briny"
-keywords = ["security", "efficient", "no_std", "memory", "no_alloc"]
-categories = [
-    "no-std",
-    "embedded",
-    "data-structures",
-    "memory-management",
-    "no-std::no-alloc",
+[workspace]
+members = [
+    "crates/briny",
+    "crates/briny-macros",
 ]
-repository = "https://github.com/bobbothe2nd/briny"
-readme = "README.md"
-
-[dependencies]
-# briny_derive = { path = "../briny_derive", optional = true }
-
-[features]
-# default = ["derive"]
-# derive = ["dep:briny_derive"]
+resolver = "2"
