@@ -15,4 +15,4 @@ categories = [
     "no-std::no-alloc",
 ]
 repository = "https://github.com/bobbothe2nd/briny"
-readme = "../../README.md"
+readme = "README.md"
