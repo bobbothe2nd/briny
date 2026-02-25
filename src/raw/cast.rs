@@ -126,6 +126,7 @@ pub const fn cast<T: Pod, U: Pod>(input: &T) -> U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(size_of::<T>() == size_of::<U>(), "cannot cast between types of different sizes");
+        assert!(align_of::<T>() >= align_of::<U>(), "cannot cast unaligned types");
     }
 
     let src_as_u = ptr::from_ref(input).cast::<U>();
@@ -138,6 +139,7 @@ pub const fn cast_mut<T: Pod, U: Pod>(input: &mut T) -> U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(size_of::<T>() == size_of::<U>(), "cannot cast between types of different sizes");
+        assert!(align_of::<T>() >= align_of::<U>(), "cannot cast unaligned types");
     }
 
     let src_as_u = ptr::from_ref(input).cast::<U>();
@@ -149,7 +151,7 @@ pub const fn cast_mut<T: Pod, U: Pod>(input: &mut T) -> U {
 pub const fn cast_slice<T: Pod, U: Pod>(input: &[T]) -> &[U] {
     const {
         assert!(size_of::<T>() > 0 && size_of::<U>() > 0, "cannot cast between ZSTs");
-        assert!(align_of::<T>() == align_of::<U>(), "cannot cast unaligned slices");
+        assert!(align_of::<T>() >= align_of::<U>(), "cannot cast unaligned slices");
     }
 
     let len = size_of_val(input) / size_of::<U>();
@@ -162,7 +164,7 @@ pub const fn cast_slice<T: Pod, U: Pod>(input: &[T]) -> &[U] {
 pub const fn cast_slice_mut<T: Pod, U: Pod>(input: &mut [T]) -> &mut [U] {
     const {
         assert!(size_of::<T>() > 0 && size_of::<U>() > 0, "cannot cast between ZSTs");
-        assert!(align_of::<T>() == align_of::<U>(), "cannot cast unaligned slices");
+        assert!(align_of::<T>() >= align_of::<U>(), "cannot cast unaligned slices");
     }
 
     let len = size_of_val(input) / size_of::<U>();

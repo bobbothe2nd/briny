@@ -1,6 +1,6 @@
 # `briny`
 
-`briny` offers typed casts, unwinding aborts, and type-level abstraction.
+`briny` offers typed casts, non-unwinding aborts, and type-level abstraction.
 
 ## Contributing
 

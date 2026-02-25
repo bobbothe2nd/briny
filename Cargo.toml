@@ -1,6 +1,18 @@
-[workspace]
-members = [
-    "crates/briny",
-    "crates/briny-macros",
+[package]
+name = "briny"
+version = "0.4.1"
+edition = "2021"
+rust-version = "1.83.0"
+description = "Low-level enforcement of memory layout integrity"
+license = "MIT"
+documentation = "https://docs.rs/briny"
+keywords = ["security", "efficient", "no_std", "memory", "no_alloc"]
+categories = [
+    "no-std",
+    "embedded",
+    "data-structures",
+    "memory-management",
+    "no-std::no-alloc",
 ]
-resolver = "2"
+repository = "https://github.com/bobbothe2nd/briny"
+readme = "../../README.md"
