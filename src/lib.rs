@@ -1,6 +1,6 @@
 //! Functions, traits, methods, and types to improve memory integrity.
 
-// #![forbid(missing_docs)]
+#![forbid(missing_docs)]
 #![forbid(unused_must_use)]
 #![deny(clippy::all)]
 #![deny(clippy::nursery)]
@@ -11,8 +11,6 @@
 #![no_std]
 
 pub mod raw;
-pub mod ub;
-
 pub mod traits;
 
 /// A general error for anything that goes wrong internally.
@@ -126,5 +124,4 @@ impl core::error::Error for BrinyError {}
 
 unsafe impl crate::traits::RawConvert for BrinyError {}
 unsafe impl crate::traits::StableLayout for BrinyError {}
-unsafe impl crate::traits::InteriorImmutable for BrinyError {}
 unsafe impl crate::traits::Unaligned for BrinyError {}

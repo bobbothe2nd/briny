@@ -1,4 +1,4 @@
-//! Core primitives, byte casting, and (mostly) safe wrappers for handling raw bytes.
+//! Core primitives, byte casting, and safe wrappers for handling raw bytes.
 //!
 //! # Safety
 //!
@@ -6,9 +6,6 @@
 //!
 //! Traits like `Pod` provide useful methods to handle this data safely.
 
-mod cast;
-pub use cast::{
-    cast, cast_mut, from_bytes, from_bytes_unaligned, slice_from_bytes,
-    slice_to_bytes, slice_to_bytes_mut, to_bytes, to_bytes_mut,
-    cast_slice, cast_slice_mut,
-};
+pub mod cast;
+
+pub mod nonzero;

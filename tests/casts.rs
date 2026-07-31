@@ -1,4 +1,4 @@
-use briny::raw::{cast, from_bytes, slice_from_bytes, to_bytes};
+use briny::raw::cast::{cast, from_bytes, slice_from_bytes, to_bytes};
 use briny::traits::{Pod, RawConvert, StableLayout};
 
 #[test]

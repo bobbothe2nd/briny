@@ -1,6 +1,6 @@
 //! Traits to abstract common characteristics among types.
 
-use core::{cell::{Cell, LazyCell, OnceCell, RefCell, RefMut, UnsafeCell}, marker::PhantomData, mem::{ManuallyDrop, MaybeUninit}, num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Wrapping}, pin::Pin, ptr::NonNull, sync::atomic::{AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicU16, AtomicU32, AtomicU64, AtomicU8, AtomicUsize}};
+use core::{cell::{Cell, LazyCell, OnceCell, RefCell, RefMut, UnsafeCell}, marker::PhantomData, mem::{ManuallyDrop, MaybeUninit}, num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Wrapping}, ptr::NonNull, sync::atomic::{AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicU16, AtomicU32, AtomicU64, AtomicU8, AtomicUsize}};
 
 /// A simple marker trait for types that have a consistent layout in memory.
 pub unsafe trait StableLayout: 'static {}
@@ -57,80 +57,6 @@ unsafe impl<T: StableLayout> StableLayout for ManuallyDrop<T> {}
 unsafe impl<T: StableLayout> StableLayout for Wrapping<T> {}
 unsafe impl<T: 'static> StableLayout for PhantomData<T> {}
 
-/// Marker trait for types that are NOT interiorly mutable.
-///
-/// This complements [`Writable`] in the sense that any type which
-/// cannot be mutated through a shared reference should implement this,
-/// and every other type should implement it's complement. Anything
-/// which either implements both or implements neither can be considered
-/// a logic error (or undefined behavior in the case of the former).
-pub unsafe trait InteriorImmutable {}
-
-unsafe impl InteriorImmutable for u8 {}
-unsafe impl InteriorImmutable for i8 {}
-unsafe impl InteriorImmutable for u16 {}
-unsafe impl InteriorImmutable for i16 {}
-unsafe impl InteriorImmutable for u32 {}
-unsafe impl InteriorImmutable for i32 {}
-unsafe impl InteriorImmutable for u64 {}
-unsafe impl InteriorImmutable for i64 {}
-unsafe impl InteriorImmutable for u128 {}
-unsafe impl InteriorImmutable for i128 {}
-unsafe impl InteriorImmutable for isize {}
-unsafe impl InteriorImmutable for usize {}
-unsafe impl InteriorImmutable for f32 {}
-unsafe impl InteriorImmutable for f64 {}
-unsafe impl InteriorImmutable for bool {}
-unsafe impl InteriorImmutable for NonZeroU8 {}
-unsafe impl InteriorImmutable for NonZeroI8 {}
-unsafe impl InteriorImmutable for NonZeroU16 {}
-unsafe impl InteriorImmutable for NonZeroI16 {}
-unsafe impl InteriorImmutable for NonZeroU32 {}
-unsafe impl InteriorImmutable for NonZeroI32 {}
-unsafe impl InteriorImmutable for NonZeroU64 {}
-unsafe impl InteriorImmutable for NonZeroI64 {}
-unsafe impl InteriorImmutable for NonZeroU128 {}
-unsafe impl InteriorImmutable for NonZeroI128 {}
-unsafe impl InteriorImmutable for NonZeroUsize {}
-unsafe impl InteriorImmutable for NonZeroIsize {}
-unsafe impl<T: InteriorImmutable, const N: usize> InteriorImmutable for [T; N] {}
-unsafe impl<T: InteriorImmutable> InteriorImmutable for MaybeUninit<T> {}
-unsafe impl<T: InteriorImmutable> InteriorImmutable for Pin<T> {}
-unsafe impl<T: InteriorImmutable> InteriorImmutable for ManuallyDrop<T> {}
-unsafe impl<T: InteriorImmutable> InteriorImmutable for Wrapping<T> {}
-unsafe impl<T> InteriorImmutable for PhantomData<T> {}
-
-/// Any type that is interiorly mutable.
-///
-/// This is the complement of [`InteriorImmutable`] as described.
-pub unsafe trait Writable {}
-
-unsafe impl Writable for AtomicU8 {}
-unsafe impl Writable for AtomicI8 {}
-unsafe impl Writable for AtomicU16 {}
-unsafe impl Writable for AtomicI16 {}
-unsafe impl Writable for AtomicU32 {}
-unsafe impl Writable for AtomicI32 {}
-unsafe impl Writable for AtomicU64 {}
-unsafe impl Writable for AtomicI64 {}
-unsafe impl Writable for AtomicUsize {}
-unsafe impl Writable for AtomicIsize {}
-unsafe impl Writable for AtomicBool {}
-unsafe impl<T: Writable> Writable for [T] {}
-unsafe impl<T: Writable, const N: usize> Writable for [T; N] {}
-unsafe impl<T: Writable> Writable for MaybeUninit<T> {}
-unsafe impl<T> Writable for UnsafeCell<T> {}
-unsafe impl<T> Writable for Cell<T> {}
-unsafe impl<T> Writable for RefMut<'_, T> {}
-unsafe impl<T> Writable for RefCell<T> {}
-unsafe impl<T> Writable for OnceCell<T> {}
-unsafe impl<T> Writable for LazyCell<T> {}
-unsafe impl<T: Writable> Writable for ManuallyDrop<T> {}
-unsafe impl<T: Writable> Writable for Wrapping<T> {}
-unsafe impl<T> Writable for NonNull<T> {}
-unsafe impl<T> Writable for *mut T {}
-unsafe impl<T> Writable for &mut T {}
-
 /// Marker trait for types subject to the null pointer optimization.
 ///
 /// # Safety
@@ -152,6 +78,8 @@ unsafe impl NonNullable for NonZeroI128 {}
 unsafe impl NonNullable for NonZeroUsize {}
 unsafe impl NonNullable for NonZeroIsize {}
 unsafe impl<T> NonNullable for NonNull<T> {}
+unsafe impl<T> NonNullable for &T {}
+unsafe impl<T> NonNullable for &mut T {}
 
 /// Marker trait for types that can be converted to/from bytes freely.
 /// 
@@ -198,16 +126,10 @@ unsafe impl<T> RawConvert for NonNull<T> {}
 unsafe impl<T: RawConvert, const N: usize> RawConvert for [T; N] {}
 unsafe impl<T: RawConvert> RawConvert for MaybeUninit<T> {}
 unsafe impl<T: RawConvert> RawConvert for Option<T> {}
-unsafe impl<T> RawConvert for &T {}
-unsafe impl<T> RawConvert for &mut T {}
 unsafe impl<T> RawConvert for *const T {}
 unsafe impl<T> RawConvert for *mut T {}
 unsafe impl<T: RawConvert> RawConvert for UnsafeCell<T> {}
 unsafe impl<T: RawConvert> RawConvert for Cell<T> {}
-unsafe impl<T: RawConvert> RawConvert for RefCell<T> {}
-unsafe impl<T: RawConvert> RawConvert for RefMut<'_, T> {}
-unsafe impl<T: RawConvert> RawConvert for LazyCell<T> {}
-unsafe impl<T: RawConvert> RawConvert for OnceCell<T> {}
 unsafe impl<T: RawConvert> RawConvert for ManuallyDrop<T> {}
 unsafe impl<T: RawConvert> RawConvert for Wrapping<T> {}
 unsafe impl<T> RawConvert for PhantomData<T> {}

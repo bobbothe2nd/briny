@@ -1,8 +1,11 @@
-use crate::{traits::Pod, BrinyError};
+//! Casting primitive operations.
+
+use crate::{BrinyError, traits::{Pod, RawConvert}};
 use core::{mem, ptr, slice};
 
+/// Converts any slice to bytes.
 #[inline(always)]
-pub fn slice_to_bytes<T: Pod>(slice: &[T]) -> &[u8] {
+pub fn slice_to_bytes<T: RawConvert>(slice: &[T]) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
@@ -12,8 +15,9 @@ pub fn slice_to_bytes<T: Pod>(slice: &[T]) -> &[u8] {
     unsafe { slice::from_raw_parts(ptr, len) }
 }
 
+/// Converts any mutable slice to bytes.
 #[inline(always)]
-pub const fn slice_to_bytes_mut<T: Pod>(slice: &mut [T]) -> &mut [u8] {
+pub const fn slice_to_bytes_mut<T: RawConvert>(slice: &mut [T]) -> &mut [u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
@@ -23,8 +27,9 @@ pub const fn slice_to_bytes_mut<T: Pod>(slice: &mut [T]) -> &mut [u8] {
     unsafe { slice::from_raw_parts_mut(ptr, len) }
 }
 
+/// Converts any reference to a `RawConvert` type to bytes.
 #[inline(always)]
-pub const fn to_bytes<T: Pod>(input: &T) -> &[u8] {
+pub const fn to_bytes<T: RawConvert>(input: &T) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
@@ -32,8 +37,9 @@ pub const fn to_bytes<T: Pod>(input: &T) -> &[u8] {
     unsafe { slice::from_raw_parts(ptr::from_ref::<T>(input).cast::<u8>(), size_of::<T>()) }
 }
 
+/// Converts any mutable reference to a `RawConvert` type to bytes.
 #[inline(always)]
-pub const fn to_bytes_mut<T: Pod>(input: &mut T) -> &mut [u8] {
+pub const fn to_bytes_mut<T: RawConvert>(input: &mut T) -> &mut [u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
@@ -41,8 +47,9 @@ pub const fn to_bytes_mut<T: Pod>(input: &mut T) -> &mut [u8] {
     unsafe { slice::from_raw_parts_mut(ptr::from_mut::<T>(input).cast::<u8>(), size_of::<T>()) }
 }
 
+/// Attempts to get a slice from raw bytes.
 #[inline(always)]
-pub fn slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], BrinyError> {
+pub fn slice_from_bytes<T: RawConvert>(bytes: &[u8]) -> Result<&[T], BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
@@ -70,8 +77,9 @@ pub fn slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], BrinyError> {
     Ok(unsafe { slice::from_raw_parts(t_ptr, len) })
 }
 
+/// Attempts to get a value from raw bytes.
 #[inline(always)]
-pub fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
+pub fn from_bytes<T: RawConvert>(bytes: &[u8]) -> Result<T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
@@ -98,8 +106,9 @@ pub fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
     }
 }
 
+/// Attempts to get a value from raw bytes without requiring alignment.
 #[inline(always)]
-pub const fn from_bytes_unaligned<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
+pub const fn from_bytes_unaligned<T: RawConvert>(bytes: &[u8]) -> Result<T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
@@ -108,7 +117,6 @@ pub const fn from_bytes_unaligned<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError>
         return Err(BrinyError::SIZE_BOUND_FAILURE);
     }
 
-    // copy bytes into temporary buffer
     let mut tmp = mem::MaybeUninit::<T>::uninit();
     unsafe {
         ptr::copy_nonoverlapping(
@@ -121,6 +129,7 @@ pub const fn from_bytes_unaligned<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError>
     }
 }
 
+/// Casts between two references to `Pod` types.
 #[inline(always)]
 pub const fn cast<T: Pod, U: Pod>(input: &T) -> U {
     const {
@@ -134,6 +143,7 @@ pub const fn cast<T: Pod, U: Pod>(input: &T) -> U {
     val
 }
 
+/// Casts between two mutable references to `Pod` types.
 #[inline(always)]
 pub const fn cast_mut<T: Pod, U: Pod>(input: &mut T) -> U {
     const {
@@ -147,6 +157,7 @@ pub const fn cast_mut<T: Pod, U: Pod>(input: &mut T) -> U {
     val
 }
 
+/// Casts between two immutable slices of different types.
 #[inline(always)]
 pub const fn cast_slice<T: Pod, U: Pod>(input: &[T]) -> &[U] {
     const {
@@ -160,6 +171,7 @@ pub const fn cast_slice<T: Pod, U: Pod>(input: &[T]) -> &[U] {
     val
 }
 
+/// Casts between two mutable slices of different types.
 #[inline(always)]
 pub const fn cast_slice_mut<T: Pod, U: Pod>(input: &mut [T]) -> &mut [U] {
     const {
@@ -190,17 +202,13 @@ mod tests {
 
     #[test]
     fn stack_misaligned_slice_from_bytes() {
-        // stack buffer: 12 bytes (to allow misalignment)
         let mut buf = [0u8; 12];
 
-        // deliberately misalign by 1
         let misaligned_ptr = buf.as_mut_ptr().wrapping_add(1);
 
-        // make a slice of 8 bytes from misaligned pointer
         let slice = unsafe { slice::from_raw_parts(misaligned_ptr, 8) };
 
-        // should error because of misalignment
-        let result = crate::raw::slice_from_bytes::<u32>(slice);
+        let result = slice_from_bytes::<u32>(slice);
         assert!(result.is_err());
     }
 
@@ -254,14 +262,12 @@ mod tests {
 
     #[test]
     fn from_bytes_unaligned_safety() {
-        // aligned bytes
         let val = 42u32;
 
         let bytes = val.to_le_bytes();
         let result = from_bytes_unaligned::<u32>(&bytes).unwrap();
         assert_eq!(result, val);
 
-        // unaligned slice in a bigger array
         let mut buffer = [0u8; 8];
         buffer[1..5].copy_from_slice(&val.to_le_bytes());
         let slice = &buffer[1..5];
