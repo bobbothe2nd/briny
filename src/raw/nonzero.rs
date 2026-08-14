@@ -3,7 +3,7 @@
 use core::mem::{ManuallyDrop, MaybeUninit};
 use crate::traits::NonNullable;
 
-/// Thin wrapper over `T` that safely checks when it is initialized
+/// Thin wrapper over `T` that safely checks when it is initialized.
 pub struct MaybeNull<T: NonNullable> {
     inner: MaybeUninit<T>,
 }

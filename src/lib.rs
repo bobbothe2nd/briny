@@ -12,6 +12,7 @@
 
 pub mod raw;
 pub mod traits;
+pub mod align;
 
 /// A general error for anything that goes wrong internally.
 ///

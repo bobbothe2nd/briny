@@ -2,9 +2,12 @@
 
 use core::{cell::{Cell, LazyCell, OnceCell, RefCell, RefMut, UnsafeCell}, marker::PhantomData, mem::{ManuallyDrop, MaybeUninit}, num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Wrapping}, ptr::NonNull, sync::atomic::{AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicU16, AtomicU32, AtomicU64, AtomicU8, AtomicUsize}};
 
+use crate::raw::nonzero::MaybeNull;
+
 /// A simple marker trait for types that have a consistent layout in memory.
 pub unsafe trait StableLayout: 'static {}
 
+unsafe impl StableLayout for () {}
 unsafe impl StableLayout for u8 {}
 unsafe impl StableLayout for i8 {}
 unsafe impl StableLayout for u16 {}
@@ -65,6 +68,7 @@ unsafe impl<T: 'static> StableLayout for PhantomData<T> {}
 /// when trying to optimize memory.
 pub unsafe trait NonNullable {}
 
+unsafe impl NonNullable for () {}
 unsafe impl NonNullable for NonZeroU8 {}
 unsafe impl NonNullable for NonZeroI8 {}
 unsafe impl NonNullable for NonZeroU16 {}
@@ -95,6 +99,7 @@ unsafe impl<T> NonNullable for &mut T {}
 /// idea unless it guarantees exclusivity even when not held.
 pub unsafe trait RawConvert {}
 
+unsafe impl RawConvert for () {}
 unsafe impl RawConvert for u8 {}
 unsafe impl RawConvert for i8 {}
 unsafe impl RawConvert for u16 {}
@@ -133,8 +138,9 @@ unsafe impl<T: RawConvert> RawConvert for Cell<T> {}
 unsafe impl<T: RawConvert> RawConvert for ManuallyDrop<T> {}
 unsafe impl<T: RawConvert> RawConvert for Wrapping<T> {}
 unsafe impl<T> RawConvert for PhantomData<T> {}
+unsafe impl<T: RawConvert + NonNullable> RawConvert for MaybeNull<T> {}
 
-/// Marker trait for types aligned exactly to one byte.
+/// Marker trait for types aligned exactly to one byte (or ZST).
 ///
 /// # Safety
 ///
@@ -149,6 +155,7 @@ unsafe impl<T> RawConvert for PhantomData<T> {}
 /// that will make code safer if it isn't explicitly enforced.
 pub unsafe trait Unaligned {}
 
+unsafe impl Unaligned for () {}
 unsafe impl Unaligned for u8 {}
 unsafe impl Unaligned for i8 {}
 unsafe impl Unaligned for bool {}
@@ -175,10 +182,10 @@ unsafe impl<T> Unaligned for PhantomData<T> {}
 /// - `T` must have no padding or initialized padding
 /// - `T` must implement [`StableLayout`] + [`RawConvert`]
 ///
-/// Violating any of these constraints is bound to cause undefined behavior or
-/// compiler errors (especially if derived).
+/// Violating any of these constraints is bound to cause undefined behavior.
 pub unsafe trait Pod: StableLayout + RawConvert {}
 
+unsafe impl Pod for () {}
 unsafe impl Pod for usize {}
 unsafe impl Pod for u8 {}
 unsafe impl Pod for u16 {}
