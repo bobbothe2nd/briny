@@ -1,7 +1,7 @@
 //! `Option` alternative that exploits zeroed bitpatterns for memory efficiency.
 
-use core::mem::{ManuallyDrop, MaybeUninit};
 use crate::traits::NonNullable;
+use core::mem::{ManuallyDrop, MaybeUninit};
 
 /// Thin wrapper over `T` that safely checks when it is initialized.
 pub struct MaybeNull<T: NonNullable> {
@@ -11,6 +11,7 @@ pub struct MaybeNull<T: NonNullable> {
 impl<T: NonNullable> MaybeNull<T> {
     /// Creates a zeroed bitpattern the size of a value.
     #[inline(always)]
+    #[must_use]
     pub const fn null() -> Self {
         Self {
             inner: MaybeUninit::zeroed(),
@@ -19,6 +20,7 @@ impl<T: NonNullable> MaybeNull<T> {
 
     /// Wraps a value.
     #[inline(always)]
+    #[must_use]
     pub const fn new(val: T) -> Self {
         Self {
             inner: MaybeUninit::new(val),
@@ -63,29 +65,27 @@ impl<T: NonNullable> MaybeNull<T> {
     #[inline(always)]
     pub fn into_inner(self) -> Option<T> {
         if self.is_init() {
-            unsafe {
-                Some(self.into_inner_unchecked())
-            }
+            unsafe { Some(self.into_inner_unchecked()) }
         } else {
             None
         }
     }
 
     /// Convert this into an owned value without checking if its initialized.
+    ///
+    /// # Safety
+    ///
+    /// This does not check if the value returned is valid and could be null.
     #[inline(always)]
     pub unsafe fn into_inner_unchecked(self) -> T {
-        unsafe {
-            ManuallyDrop::new(self).inner.assume_init_read()
-        }
+        unsafe { ManuallyDrop::new(self).inner.assume_init_read() }
     }
 
     /// Attempts to get a reference to the value.
     #[inline(always)]
     pub const fn get(&self) -> Option<&T> {
         if self.is_init() {
-            unsafe {
-                Some(self.get_unchecked())
-            }
+            unsafe { Some(self.get_unchecked()) }
         } else {
             None
         }
@@ -95,28 +95,30 @@ impl<T: NonNullable> MaybeNull<T> {
     #[inline(always)]
     pub const fn get_mut(&mut self) -> Option<&mut T> {
         if self.is_init() {
-            unsafe {
-                Some(self.get_mut_unchecked())
-            }
+            unsafe { Some(self.get_mut_unchecked()) }
         } else {
             None
         }
     }
 
     /// Gets a reference without checking if its initialized.
+    ///
+    /// # Safety
+    ///
+    /// This does not check if the value returned is valid and could be null.
     #[inline(always)]
     pub const unsafe fn get_unchecked(&self) -> &T {
-        unsafe {
-            self.inner.assume_init_ref()
-        }
+        unsafe { self.inner.assume_init_ref() }
     }
 
     /// Gets a mutable reference without checking if its initialized.
+    ///
+    /// # Safety
+    ///
+    /// This does not check if the value returned is valid and could be null.
     #[inline(always)]
     pub const unsafe fn get_mut_unchecked(&mut self) -> &mut T {
-        unsafe {
-            self.inner.assume_init_mut()
-        }
+        unsafe { self.inner.assume_init_mut() }
     }
 
     /// Gets a constant pointer to the value.
@@ -173,17 +175,13 @@ impl<T: NonNullable> MaybeNull<T> {
             }
 
             unsafe {
-                core::ptr::write_bytes(
-                    self.inner.as_mut_ptr().cast::<u8>(),
-                    0,
-                    size_of::<T>()
-                );
+                core::ptr::write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
             }
         }
     }
 
     /// Sets the value to null.
-    /// 
+    ///
     /// # Safety
     ///
     /// Does not drop the value if it is initialized and does not check if it is already zeroed.
@@ -191,11 +189,7 @@ impl<T: NonNullable> MaybeNull<T> {
     #[inline(always)]
     pub const unsafe fn nullify_unchecked(&mut self) {
         unsafe {
-            core::ptr::write_bytes(
-                self.inner.as_mut_ptr().cast::<u8>(),
-                0,
-                size_of::<T>()
-            );
+            core::ptr::write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
         }
     }
 
@@ -214,11 +208,13 @@ impl<T: NonNullable> MaybeNull<T> {
     /// Matches the value over two callbacks.
     ///
     /// If initialized, call `if_init`. If null, call `if_null`.
-    pub fn match_null_ref<R>(&self, if_init: impl FnOnce(&T) -> R, if_null: impl FnOnce() -> R) -> R {
+    pub fn match_null_ref<R>(
+        &self,
+        if_init: impl FnOnce(&T) -> R,
+        if_null: impl FnOnce() -> R,
+    ) -> R {
         if self.is_init() {
-            unsafe {
-                if_init(self.get_unchecked())
-            }
+            unsafe { if_init(self.get_unchecked()) }
         } else {
             if_null()
         }
@@ -227,11 +223,13 @@ impl<T: NonNullable> MaybeNull<T> {
     /// Matches the value over two callbacks.
     ///
     /// If initialized, call `if_init`. If null, call `if_null`.
-    pub fn match_null_mut<R>(&mut self, if_init: impl FnOnce(&mut T) -> R, if_null: impl FnOnce() -> R) -> R {
+    pub fn match_null_mut<R>(
+        &mut self,
+        if_init: impl FnOnce(&mut T) -> R,
+        if_null: impl FnOnce() -> R,
+    ) -> R {
         if self.is_init() {
-            unsafe {
-                if_init(self.get_mut_unchecked())
-            }
+            unsafe { if_init(self.get_mut_unchecked()) }
         } else {
             if_null()
         }
@@ -242,9 +240,7 @@ impl<T: NonNullable> MaybeNull<T> {
     /// If initialized, call `if_init`. If null, call `if_null`.
     pub fn match_null<R>(self, if_init: impl FnOnce(T) -> R, if_null: impl FnOnce() -> R) -> R {
         if self.is_init() {
-            unsafe {
-                if_init(self.into_inner_unchecked())
-            }
+            unsafe { if_init(self.into_inner_unchecked()) }
         } else {
             if_null()
         }

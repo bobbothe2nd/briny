@@ -10,9 +10,9 @@
 #![allow(clippy::inline_always)]
 #![no_std]
 
+pub mod align;
 pub mod raw;
 pub mod traits;
-pub mod align;
 
 /// A general error for anything that goes wrong internally.
 ///
@@ -23,7 +23,7 @@ pub mod align;
 /// - Raw data is invalid
 /// - Memory is unaligned
 /// - Types have incorrect sizes
-/// 
+///
 /// To find out what specifically happened, match the code with each constant
 /// descriptor.
 #[repr(transparent)]
@@ -41,15 +41,15 @@ impl core::ops::BitOr<Self> for BrinyError {
 }
 
 impl BrinyError {
-    const RESERVED_CODE: u8 = 0b00000000;
+    const RESERVED_CODE: u8 = 0b0000_0000;
 
-    const INVALID_BITPATTERN_CODE: u8 = 0b00000001;
+    const INVALID_BITPATTERN_CODE: u8 = 0b0000_0001;
 
-    const SIZE_BOUND_FAILURE_CODE: u8 = 0b00000010;
+    const SIZE_BOUND_FAILURE_CODE: u8 = 0b0000_0010;
 
-    const UNALIGNED_ACCESS_CODE: u8 = 0b00000100;
+    const UNALIGNED_ACCESS_CODE: u8 = 0b0000_0100;
 
-    const BAD_BUFFER_CODE: u8 = 0b00001000;
+    const BAD_BUFFER_CODE: u8 = 0b0000_1000;
 
     /// A reserved code `0` that does not work as a regular error.
     pub const RESERVED: Self = Self::new(Self::RESERVED_CODE);
@@ -69,9 +69,7 @@ impl BrinyError {
     /// Constructs a new error from a code.
     #[inline]
     const fn new(code: u8) -> Self {
-        Self {
-            code
-        }
+        Self { code }
     }
 
     /// Adds the two errors into a combination of multiple error codes.
@@ -87,30 +85,35 @@ impl BrinyError {
     ///
     /// This returns false if and only if `self` IS [`Self::RESERVED`].
     #[inline]
+    #[must_use]
     pub const fn is_err(self) -> bool {
         self.code != 0
     }
 
     /// Checks if the error includes an unaligned access code.
     #[inline]
+    #[must_use]
     pub const fn is_unaligned_access(self) -> bool {
         (self.code & Self::UNALIGNED_ACCESS_CODE) != 0
     }
 
     /// Checks if the error includes an bad buffer code.
     #[inline]
+    #[must_use]
     pub const fn is_bad_buffer(self) -> bool {
         (self.code & Self::BAD_BUFFER_CODE) != 0
     }
 
     /// Checks if the error includes an invalid bitpattern code.
     #[inline]
+    #[must_use]
     pub const fn is_invalid_bitpattern(self) -> bool {
         (self.code & Self::INVALID_BITPATTERN_CODE) != 0
     }
 
     /// Checks if the error includes an size bound failure code.
     #[inline]
+    #[must_use]
     pub const fn is_size_bound_failure(self) -> bool {
         (self.code & Self::SIZE_BOUND_FAILURE_CODE) != 0
     }

@@ -1,10 +1,28 @@
 //! Traits to abstract common characteristics among types.
 
-use core::{cell::{Cell, LazyCell, OnceCell, RefCell, RefMut, UnsafeCell}, marker::PhantomData, mem::{ManuallyDrop, MaybeUninit}, num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Wrapping}, ptr::NonNull, sync::atomic::{AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicU16, AtomicU32, AtomicU64, AtomicU8, AtomicUsize}};
+use core::{
+    cell::{Cell, LazyCell, OnceCell, RefCell, RefMut, UnsafeCell},
+    marker::PhantomData,
+    mem::{ManuallyDrop, MaybeUninit},
+    num::{
+        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
+        NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Wrapping,
+    },
+    ptr::NonNull,
+    sync::atomic::{
+        AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicU16, AtomicU32,
+        AtomicU64, AtomicU8, AtomicUsize,
+    },
+};
 
 use crate::raw::nonzero::MaybeNull;
 
 /// A simple marker trait for types that have a consistent layout in memory.
+///
+/// # Safety
+///
+/// If this type does not have a stable layout, this is invalid. e.g., if the type
+/// depends on something not listed in struct fields or assumes anything about the device.
 pub unsafe trait StableLayout: 'static {}
 
 unsafe impl StableLayout for () {}
@@ -86,7 +104,7 @@ unsafe impl<T> NonNullable for &T {}
 unsafe impl<T> NonNullable for &mut T {}
 
 /// Marker trait for types that can be converted to/from bytes freely.
-/// 
+///
 /// This doesn't mean any bitpattern would be valid for it, but it can be converted
 /// to/from bytes without undefined behavior EVER occurring. different from POD by
 /// enforcing that normal (non-atomic) operations are valid. This includes [`crate::ptr::read`],
