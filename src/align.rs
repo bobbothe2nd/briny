@@ -40,11 +40,15 @@ pub const TB: u64 = 1000 * 1000 * 1000 * 1000;
 macro_rules! make_align_fn {
     ($align_up:ident, $align_down:ident, $type:ty) => {
         /// Aligns an address up such that `out > addr`.
+        #[inline(always)]
+        #[must_use]
         pub const fn $align_up(addr: $type, align: $type) -> $type {
             (addr | (align - 1)) + 1
         }
 
         /// Aligns an address down such that `out <= addr`.
+        #[inline(always)]
+        #[must_use]
         pub const fn $align_down(addr: $type, align: $type) -> $type {
             addr & (align - 1)
         }
@@ -59,11 +63,15 @@ make_align_fn!(align_up_u16, align_down_u16, u16);
 make_align_fn!(align_up_u8, align_down_u8, u8);
 
 /// Aligns an immutable pointer up such that `out <= addr`.
+#[inline(always)]
+#[must_use]
 pub fn align_up_ptr<T: Unaligned>(addr: *const T, align: usize) -> *const T {
     addr.with_addr(align_up(addr as usize, align))
 }
 
 /// Aligns an immutable pointer down such that `out <= addr`.
+#[inline(always)]
+#[must_use]
 pub fn align_down_ptr<T: Unaligned>(addr: *const T, align: usize) -> *const T {
     addr.with_addr(align_down(addr as usize, align))
 }
@@ -71,6 +79,8 @@ pub fn align_down_ptr<T: Unaligned>(addr: *const T, align: usize) -> *const T {
 /// Takes an unaligned immutable pointer and produces an aligned one such that `out > addr`.
 ///
 /// This is probably not a valid object.
+#[inline(always)]
+#[must_use]
 pub fn align_up_ptr_valid<T>(addr: *const T) -> *const T {
     addr.with_addr(align_up(addr as usize, align_of::<T>()))
 }
@@ -78,16 +88,22 @@ pub fn align_up_ptr_valid<T>(addr: *const T) -> *const T {
 /// Takes an unaligned immutable pointer and produces an aligned one such that `out <= addr`.
 ///
 /// This is probably not a valid object.
+#[inline(always)]
+#[must_use]
 pub fn align_down_ptr_valid<T>(addr: *const T) -> *const T {
     addr.with_addr(align_down(addr as usize, align_of::<T>()))
 }
 
 /// Aligns a mutable pointer up such that `out <= addr`.
+#[inline(always)]
+#[must_use]
 pub fn align_up_mut_ptr<T: Unaligned>(addr: *mut T, align: usize) -> *mut T {
     addr.with_addr(align_up(addr as usize, align))
 }
 
 /// Aligns a mutable pointer down such that `out <= addr`.
+#[inline(always)]
+#[must_use]
 pub fn align_down_mut_ptr<T: Unaligned>(addr: *mut T, align: usize) -> *mut T {
     addr.with_addr(align_down(addr as usize, align))
 }
@@ -95,6 +111,8 @@ pub fn align_down_mut_ptr<T: Unaligned>(addr: *mut T, align: usize) -> *mut T {
 /// Takes an unaligned mutable pointer and produces an aligned one such that `out > addr`.
 ///
 /// This is probably not a valid object.
+#[inline(always)]
+#[must_use]
 pub fn align_up_ptr_mut_valid<T>(addr: *mut T) -> *mut T {
     addr.with_addr(align_up(addr as usize, align_of::<T>()))
 }
@@ -102,6 +120,8 @@ pub fn align_up_ptr_mut_valid<T>(addr: *mut T) -> *mut T {
 /// Takes an unaligned mutable pointer and produces an aligned one such that `out <= addr`.
 ///
 /// This is probably not a valid object.
+#[inline(always)]
+#[must_use]
 pub fn align_down_ptr_mut_valid<T>(addr: *mut T) -> *mut T {
     addr.with_addr(align_down(addr as usize, align_of::<T>()))
 }
