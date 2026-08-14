@@ -296,7 +296,7 @@ macro_rules! match_null {
     (
         match $maybe_null:ident {
             Null => $if_null:block
-            Init() => $if_init:block
+            Init($init_val:ident) => $if_init:block
         }
     ) => {
         if $maybe_null.is_init() {
@@ -320,7 +320,7 @@ macro_rules! match_null {
     (
         match &$maybe_null:ident {
             Null => $if_null:block
-            Init() => $if_init:block
+            Init($init_val:ident) => $if_init:block
         }
     ) => {
         if $maybe_null.is_init() {
@@ -344,7 +344,7 @@ macro_rules! match_null {
     (
         match &mut $maybe_null:ident {
             Null => $if_null:block
-            Init() => $if_init:block
+            Init($init_val:ident) => $if_init:block
         }
     ) => {
         if $maybe_null.is_init() {
