@@ -293,6 +293,14 @@ mod tests {
     }
 
     #[test]
+    fn reinterpret_same_size_types() {
+        let original: u32 = 0xDEADBEEF;
+        let casted = reinterpret::<u32, f32>(original);
+        let restored = reinterpret::<f32, u32>(casted);
+        assert_eq!(restored, original);
+    }
+
+    #[test]
     fn custom_struct_bytes_roundtrip() {
         let pod = ThePod {
             a: 0xABCD,
