@@ -1,10 +1,34 @@
 //! Casting primitive operations.
 
 use crate::{
-    traits::{Pod, RawConvert},
-    BrinyError,
+    BrinyError, traits::{Layout, RawConvert, StableLayout},
 };
-use core::{mem, ptr, slice};
+use core::{mem::{self, ManuallyDrop}, ptr, slice};
+
+/// Reinterpret the bytes of `T` as `U` without copying them.
+///
+/// This does NOT drop the value of `input`. Instead, it just reinterprets the bytes as type `U`.
+#[inline(always)]
+pub const fn reinterpret<T: Layout<U>, U: StableLayout>(input: T) -> U {
+    union Reinterpret<T, U> {
+        t: ManuallyDrop<T>,
+        u: ManuallyDrop<U>,
+    }
+
+    const {
+        assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+        assert!(
+            size_of::<T>() == size_of::<U>(),
+            "cannot cast between types of different sizes"
+        );
+    }
+
+    let u = Reinterpret {
+        t: ManuallyDrop::new(input),
+    };
+
+    unsafe { ManuallyDrop::into_inner(u.u) }
+}
 
 /// Converts any slice to bytes.
 #[inline(always)]
@@ -149,7 +173,7 @@ pub const fn from_bytes_unaligned<T: RawConvert>(bytes: &[u8]) -> Result<T, Brin
 
 /// Casts between two references to `Pod` types.
 #[inline(always)]
-pub const fn cast<T: Pod, U: Pod>(input: &T) -> U {
+pub const fn cast<T: Layout<U>, U: StableLayout>(input: &T) -> U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -168,7 +192,7 @@ pub const fn cast<T: Pod, U: Pod>(input: &T) -> U {
 
 /// Casts between two mutable references to `Pod` types.
 #[inline(always)]
-pub const fn cast_mut<T: Pod, U: Pod>(input: &mut T) -> U {
+pub const fn cast_mut<T: Layout<U>, U: StableLayout>(input: &mut T) -> U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -187,15 +211,11 @@ pub const fn cast_mut<T: Pod, U: Pod>(input: &mut T) -> U {
 
 /// Casts between two immutable slices of different types.
 #[inline(always)]
-pub const fn cast_slice<T: Pod, U: Pod>(input: &[T]) -> &[U] {
+pub const fn cast_slice<T: Layout<U>, U: StableLayout>(input: &[T]) -> &[U] {
     const {
         assert!(
             size_of::<T>() > 0 && size_of::<U>() > 0,
             "cannot cast between ZSTs"
-        );
-        assert!(
-            align_of::<T>() >= align_of::<U>(),
-            "cannot cast unaligned slices"
         );
     }
 
@@ -207,15 +227,11 @@ pub const fn cast_slice<T: Pod, U: Pod>(input: &[T]) -> &[U] {
 
 /// Casts between two mutable slices of different types.
 #[inline(always)]
-pub const fn cast_slice_mut<T: Pod, U: Pod>(input: &mut [T]) -> &mut [U] {
+pub const fn cast_slice_mut<T: Layout<U>, U: StableLayout>(input: &mut [T]) -> &mut [U] {
     const {
         assert!(
             size_of::<T>() > 0 && size_of::<U>() > 0,
             "cannot cast between ZSTs"
-        );
-        assert!(
-            align_of::<T>() >= align_of::<U>(),
-            "cannot cast unaligned slices"
         );
     }
 

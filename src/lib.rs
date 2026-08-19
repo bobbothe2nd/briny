@@ -24,6 +24,8 @@ pub mod traits;
 /// - Memory is unaligned
 /// - Types have incorrect sizes
 ///
+/// Compile errors are generally preferred.
+///
 /// To find out what specifically happened, match the code with each constant
 /// descriptor.
 #[repr(transparent)]
@@ -43,28 +45,18 @@ impl core::ops::BitOr<Self> for BrinyError {
 impl BrinyError {
     const RESERVED_CODE: u8 = 0b0000_0000;
 
-    const INVALID_BITPATTERN_CODE: u8 = 0b0000_0001;
+    const SIZE_BOUND_FAILURE_CODE: u8 = 0b0000_0001;
 
-    const SIZE_BOUND_FAILURE_CODE: u8 = 0b0000_0010;
-
-    const UNALIGNED_ACCESS_CODE: u8 = 0b0000_0100;
-
-    const BAD_BUFFER_CODE: u8 = 0b0000_1000;
+    const UNALIGNED_ACCESS_CODE: u8 = 0b0000_0010;
 
     /// A reserved code `0` that does not work as a regular error.
     pub const RESERVED: Self = Self::new(Self::RESERVED_CODE);
-
-    /// An error representing that a typed cast has invalid bitpatterns.
-    pub const INVALID_BITPATTERN: Self = Self::new(Self::INVALID_BITPATTERN_CODE);
 
     /// An error indicating that two sizes are incompatible.
     pub const SIZE_BOUND_FAILURE: Self = Self::new(Self::SIZE_BOUND_FAILURE_CODE);
 
     /// An error indicating that an unaligned access is imminent.
     pub const UNALIGNED_ACCESS: Self = Self::new(Self::UNALIGNED_ACCESS_CODE);
-
-    /// An error indicating that a provided buffer is incorrect for it's use case.
-    pub const BAD_BUFFER: Self = Self::new(Self::BAD_BUFFER_CODE);
 
     /// Constructs a new error from a code.
     #[inline]
@@ -97,20 +89,6 @@ impl BrinyError {
         (self.code & Self::UNALIGNED_ACCESS_CODE) != 0
     }
 
-    /// Checks if the error includes an bad buffer code.
-    #[inline]
-    #[must_use]
-    pub const fn is_bad_buffer(self) -> bool {
-        (self.code & Self::BAD_BUFFER_CODE) != 0
-    }
-
-    /// Checks if the error includes an invalid bitpattern code.
-    #[inline]
-    #[must_use]
-    pub const fn is_invalid_bitpattern(self) -> bool {
-        (self.code & Self::INVALID_BITPATTERN_CODE) != 0
-    }
-
     /// Checks if the error includes an size bound failure code.
     #[inline]
     #[must_use]
@@ -128,4 +106,3 @@ impl core::error::Error for BrinyError {}
 
 unsafe impl crate::traits::RawConvert for BrinyError {}
 unsafe impl crate::traits::StableLayout for BrinyError {}
-unsafe impl crate::traits::Unaligned for BrinyError {}

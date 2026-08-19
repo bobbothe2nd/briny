@@ -16,15 +16,14 @@ And you'd be correct to say that looks completely useless. But the best part is 
 
 Wait... how is this different from bytemuck though?
 
-1. Clean error handling
-2. No dependencies
-3. Theres more
+1. You can cast arbitrary types using the `Layout` trait. Assume type `T` can be cast to `U` safely, but not type `V`. Just implement `T: Layout<U>`.
+2. Theres more!
 
 `briny` isn't just casts, it's alignment and a `MaybeNull` structure too.
 
 `MaybeNull` is like `MaybeUninit` and `Option` combined into one structure. It has it's own way of optimizing zero bitpatterns, using a trait. It has a completely safe API and even has it's own macro to match over null and initialized values.
 
-Alignment is super easy to use in `briny` because it uses an `Unaligned` trait and works at compile time. There are functions to align all unsigned integer types and both immutable and mutable pointers at compile time. The `align` module also defines some constants that can help alignment or just manage memory in general. Particularly different units in measuring memory (byte, GB, GiB, WORD, QWORD, etc.).
+Alignment is super easy to use in `briny` because it asserts alignment at compile time. There are functions to align all unsigned integer types and both immutable and mutable pointers at compile time. The `align` module also defines some constants that can help alignment or just manage memory in general. Particularly different units in measuring memory (byte, GB, GiB, WORD, QWORD, etc.).
 
 ## Contributing
 

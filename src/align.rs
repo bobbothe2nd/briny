@@ -1,7 +1,5 @@
 //! Constants and alignment functions to help manage memory.
 
-use crate::traits::Unaligned;
-
 /// 1 byte, the smallest unit a CPU can operate on. (8 bits)
 ///
 /// The size of a `u8`
@@ -65,14 +63,22 @@ make_align_fn!(align_up_u8, align_down_u8, u8);
 /// Aligns an immutable pointer up such that `out <= addr`.
 #[inline(always)]
 #[must_use]
-pub fn align_up_ptr<T: Unaligned>(addr: *const T, align: usize) -> *const T {
+pub fn align_up_ptr<T>(addr: *const T, align: usize) -> *const T {
+    const {
+        assert!(align_of::<T>() == 1)
+    }
+
     addr.with_addr(align_up(addr as usize, align))
 }
 
 /// Aligns an immutable pointer down such that `out <= addr`.
 #[inline(always)]
 #[must_use]
-pub fn align_down_ptr<T: Unaligned>(addr: *const T, align: usize) -> *const T {
+pub fn align_down_ptr<T>(addr: *const T, align: usize) -> *const T {
+    const {
+        assert!(align_of::<T>() == 1)
+    }
+
     addr.with_addr(align_down(addr as usize, align))
 }
 
@@ -97,14 +103,22 @@ pub fn align_down_ptr_valid<T>(addr: *const T) -> *const T {
 /// Aligns a mutable pointer up such that `out <= addr`.
 #[inline(always)]
 #[must_use]
-pub fn align_up_mut_ptr<T: Unaligned>(addr: *mut T, align: usize) -> *mut T {
+pub fn align_up_mut_ptr<T>(addr: *mut T, align: usize) -> *mut T {
+    const {
+        assert!(align_of::<T>() == 1)
+    }
+
     addr.with_addr(align_up(addr as usize, align))
 }
 
 /// Aligns a mutable pointer down such that `out <= addr`.
 #[inline(always)]
 #[must_use]
-pub fn align_down_mut_ptr<T: Unaligned>(addr: *mut T, align: usize) -> *mut T {
+pub fn align_down_mut_ptr<T>(addr: *mut T, align: usize) -> *mut T {
+    const {
+        assert!(align_of::<T>() == 1)
+    }
+
     addr.with_addr(align_down(addr as usize, align))
 }
 

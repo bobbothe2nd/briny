@@ -23,7 +23,7 @@ use crate::raw::nonzero::MaybeNull;
 ///
 /// If this type does not have a stable layout, this is invalid. e.g., if the type
 /// depends on something not listed in struct fields or assumes anything about the device.
-pub unsafe trait StableLayout: 'static {}
+pub unsafe trait StableLayout: Sized + 'static {}
 
 unsafe impl StableLayout for () {}
 unsafe impl StableLayout for u8 {}
@@ -147,50 +147,13 @@ unsafe impl RawConvert for NonZeroUsize {}
 unsafe impl RawConvert for NonZeroIsize {}
 unsafe impl<T> RawConvert for NonNull<T> {}
 unsafe impl<T: RawConvert, const N: usize> RawConvert for [T; N] {}
-unsafe impl<T: RawConvert> RawConvert for MaybeUninit<T> {}
 unsafe impl<T: RawConvert> RawConvert for Option<T> {}
-unsafe impl<T> RawConvert for *const T {}
-unsafe impl<T> RawConvert for *mut T {}
 unsafe impl<T: RawConvert> RawConvert for UnsafeCell<T> {}
 unsafe impl<T: RawConvert> RawConvert for Cell<T> {}
 unsafe impl<T: RawConvert> RawConvert for ManuallyDrop<T> {}
 unsafe impl<T: RawConvert> RawConvert for Wrapping<T> {}
 unsafe impl<T> RawConvert for PhantomData<T> {}
 unsafe impl<T: RawConvert + NonNullable> RawConvert for MaybeNull<T> {}
-
-/// Marker trait for types aligned exactly to one byte (or ZST).
-///
-/// # Safety
-///
-/// If the type isn't aligned to one byte, undefined behavior
-/// could theoretically occur - though it is still unlikely.
-/// Albeit, implementing this on strictly aligned types is
-/// considered unsound.
-///
-/// This can be done via the `repr(packed(1))` attribute on
-/// structures. Note that `repr(align(1))` will NOT align the
-/// structure to one byte, because Rust is free to change anything
-/// that will make code safer if it isn't explicitly enforced.
-pub unsafe trait Unaligned {}
-
-unsafe impl Unaligned for () {}
-unsafe impl Unaligned for u8 {}
-unsafe impl Unaligned for i8 {}
-unsafe impl Unaligned for bool {}
-unsafe impl Unaligned for AtomicU8 {}
-unsafe impl Unaligned for AtomicI8 {}
-unsafe impl Unaligned for AtomicBool {}
-unsafe impl Unaligned for NonZeroU8 {}
-unsafe impl Unaligned for NonZeroI8 {}
-unsafe impl<T: Unaligned> Unaligned for Option<T> {}
-unsafe impl<T: Unaligned, const N: usize> Unaligned for [T; N] {}
-unsafe impl<T: Unaligned> Unaligned for [T] {}
-unsafe impl<T: Unaligned> Unaligned for MaybeUninit<T> {}
-unsafe impl<T: Unaligned> Unaligned for UnsafeCell<T> {}
-unsafe impl<T: Unaligned> Unaligned for Cell<T> {}
-unsafe impl<T: Unaligned> Unaligned for ManuallyDrop<T> {}
-unsafe impl<T: Unaligned> Unaligned for Wrapping<T> {}
-unsafe impl<T> Unaligned for PhantomData<T> {}
 
 /// POD marker trait for *Plain Old Data*.
 ///
@@ -219,11 +182,14 @@ unsafe impl Pod for i128 {}
 unsafe impl Pod for f32 {}
 unsafe impl Pod for f64 {}
 unsafe impl<T: Pod, const N: usize> Pod for [T; N] {}
-unsafe impl<T: Pod> Pod for MaybeUninit<T> {}
-unsafe impl<T: Pod> Pod for UnsafeCell<T> {}
-unsafe impl<T: Pod> Pod for Cell<T> {}
 unsafe impl<T: Pod> Pod for ManuallyDrop<T> {}
 unsafe impl<T: Pod> Pod for Wrapping<T> {}
 unsafe impl<T: 'static> Pod for PhantomData<T> {}
-unsafe impl<T: 'static> Pod for *const T {}
-unsafe impl<T: 'static> Pod for *mut T {}
+
+/// Internal trait used to determine what types are safe to cast.
+///
+/// If a type is safe to cast to another type, but not any type, this should be used
+/// instead of [`Pod`].
+pub unsafe trait Layout<T: StableLayout>: StableLayout {}
+
+unsafe impl<T: Pod, U: Pod> Layout<U> for T {}

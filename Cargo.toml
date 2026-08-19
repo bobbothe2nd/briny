@@ -1,6 +1,6 @@
 [package]
 name = "briny"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 rust-version = "1.85.0"
 description = "Low-level enforcement of memory layout integrity"
@@ -16,9 +16,3 @@ categories = [
 ]
 repository = "https://github.com/bobbothe2nd/briny"
 readme = "README.md"
-
-[profile.dev]
-incremental = false
-
-[profile.release]
-incremental = false
