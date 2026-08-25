@@ -1,11 +1,15 @@
 //! Casting primitive operations.
 
 use crate::{
-    BrinyError, traits::{Layout, RawConvert, StableLayout},
+    traits::{Layout, RawConvert, StableLayout},
+    BrinyError,
 };
-use core::{mem::{self, ManuallyDrop}, ptr, slice};
+use core::{
+    mem::{self, ManuallyDrop},
+    ptr, slice,
+};
 
-/// Reinterpret the bytes of `T` as `U` without copying them.
+/// Reinterpret the bytes of `T` as `U` *without copying* them.
 ///
 /// This does NOT drop the value of `input`. Instead, it just reinterprets the bytes as type `U`.
 #[inline(always)]
@@ -90,12 +94,12 @@ pub fn slice_from_bytes<T: RawConvert>(bytes: &[u8]) -> Result<&[T], BrinyError>
 
     let elem_size = size_of::<T>();
 
-    if bytes.len() % elem_size != 0 {
+    if !bytes.len().is_multiple_of(elem_size) {
         err = err.add(BrinyError::UNALIGNED_ACCESS);
     }
 
     let ptr = bytes.as_ptr();
-    if (ptr as usize) % align_of::<T>() != 0 {
+    if !(ptr as usize).is_multiple_of(align_of::<T>()) {
         err = err.add(BrinyError::UNALIGNED_ACCESS);
     }
 
@@ -125,7 +129,7 @@ pub fn from_bytes<T: RawConvert>(bytes: &[u8]) -> Result<T, BrinyError> {
     if bytes.len() != size_of::<T>() {
         err = err.add(BrinyError::SIZE_BOUND_FAILURE);
     }
-    if (bytes.as_ptr() as usize) % align_of::<T>() != 0 {
+    if !(bytes.as_ptr() as usize).is_multiple_of(align_of::<T>()) {
         err = err.add(BrinyError::UNALIGNED_ACCESS);
     }
     if err.is_err() {

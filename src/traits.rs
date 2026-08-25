@@ -6,7 +6,7 @@ use core::{
     mem::{ManuallyDrop, MaybeUninit},
     num::{
         NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
-        NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Wrapping,
+        NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Saturating, Wrapping,
     },
     ptr::NonNull,
     sync::atomic::{
@@ -76,13 +76,51 @@ unsafe impl<T: StableLayout> StableLayout for OnceCell<T> {}
 unsafe impl<T: StableLayout> StableLayout for LazyCell<T> {}
 unsafe impl<T: StableLayout> StableLayout for ManuallyDrop<T> {}
 unsafe impl<T: StableLayout> StableLayout for Wrapping<T> {}
+unsafe impl<T: StableLayout> StableLayout for Saturating<T> {}
 unsafe impl<T: 'static> StableLayout for PhantomData<T> {}
+unsafe impl<T: StableLayout + NonNullable> StableLayout for MaybeNull<T> {}
+unsafe impl<T: StableLayout> StableLayout for Option<T> {}
+
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m128 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m128bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m128d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m128i {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m256 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m256bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m256d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m256i {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m512 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m512bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m512d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl StableLayout for core::arch::x86_64::__m512i {}
+
+#[cfg(feature = "half")]
+unsafe impl StableLayout for half::f16 {}
+#[cfg(feature = "half")]
+unsafe impl StableLayout for half::bf16 {}
+
+#[cfg(feature = "nightly_float")]
+unsafe impl StableLayout for f16 {}
+#[cfg(feature = "nightly_float")]
+unsafe impl StableLayout for f128 {}
 
 /// Marker trait for types subject to the null pointer optimization.
 ///
 /// # Safety
 ///
-/// If `zeroed` is a valid bitpattern, undefined behavior will occur
+/// If zeroed is a valid bitpattern, undefined behavior will occur
 /// when trying to optimize memory.
 pub unsafe trait NonNullable {}
 
@@ -102,6 +140,30 @@ unsafe impl NonNullable for NonZeroIsize {}
 unsafe impl<T> NonNullable for NonNull<T> {}
 unsafe impl<T> NonNullable for &T {}
 unsafe impl<T> NonNullable for &mut T {}
+
+/// Marker trait for types subject to the null pointer optimization by the compiler.
+///
+/// # Safety
+///
+/// If the compiler can safely assume the type can't represent a zeroed bitpattern,
+/// this is safe. It isn't safe to implement on `Pod` types.
+pub unsafe trait CompilerAssumedNonNullable: NonNullable {}
+
+unsafe impl CompilerAssumedNonNullable for NonZeroU8 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroI8 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroU16 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroI16 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroU32 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroI32 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroU64 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroI64 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroU128 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroI128 {}
+unsafe impl CompilerAssumedNonNullable for NonZeroUsize {}
+unsafe impl CompilerAssumedNonNullable for NonZeroIsize {}
+unsafe impl<T> CompilerAssumedNonNullable for NonNull<T> {}
+unsafe impl<T> CompilerAssumedNonNullable for &T {}
+unsafe impl<T> CompilerAssumedNonNullable for &mut T {}
 
 /// Marker trait for types that can be converted to/from bytes freely.
 ///
@@ -152,8 +214,44 @@ unsafe impl<T: RawConvert> RawConvert for UnsafeCell<T> {}
 unsafe impl<T: RawConvert> RawConvert for Cell<T> {}
 unsafe impl<T: RawConvert> RawConvert for ManuallyDrop<T> {}
 unsafe impl<T: RawConvert> RawConvert for Wrapping<T> {}
+unsafe impl<T: RawConvert> RawConvert for Saturating<T> {}
 unsafe impl<T> RawConvert for PhantomData<T> {}
 unsafe impl<T: RawConvert + NonNullable> RawConvert for MaybeNull<T> {}
+
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m128 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m128bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m128d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m128i {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m256 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m256bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m256d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m256i {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m512 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m512bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m512d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl RawConvert for core::arch::x86_64::__m512i {}
+
+#[cfg(feature = "half")]
+unsafe impl RawConvert for half::f16 {}
+#[cfg(feature = "half")]
+unsafe impl RawConvert for half::bf16 {}
+
+#[cfg(feature = "nightly_float")]
+unsafe impl RawConvert for f16 {}
+#[cfg(feature = "nightly_float")]
+unsafe impl RawConvert for f128 {}
 
 /// POD marker trait for *Plain Old Data*.
 ///
@@ -184,12 +282,55 @@ unsafe impl Pod for f64 {}
 unsafe impl<T: Pod, const N: usize> Pod for [T; N] {}
 unsafe impl<T: Pod> Pod for ManuallyDrop<T> {}
 unsafe impl<T: Pod> Pod for Wrapping<T> {}
+unsafe impl<T: Pod> Pod for Saturating<T> {}
 unsafe impl<T: 'static> Pod for PhantomData<T> {}
+unsafe impl<T: CompilerAssumedNonNullable + RawConvert + StableLayout> Pod for Option<T> {}
+
+#[cfg(feature = "half")]
+unsafe impl Pod for half::f16 {}
+#[cfg(feature = "half")]
+unsafe impl Pod for half::bf16 {}
+
+#[cfg(feature = "nightly_float")]
+unsafe impl Pod for f16 {}
+#[cfg(feature = "nightly_float")]
+unsafe impl Pod for f128 {}
+
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m128 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m128bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m128d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m128i {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m256 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m256bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m256d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m256i {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m512 {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m512bh {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m512d {}
+#[cfg(target_arch = "x86_64")]
+unsafe impl Pod for core::arch::x86_64::__m512i {}
 
 /// Internal trait used to determine what types are safe to cast.
 ///
 /// If a type is safe to cast to another type, but not any type, this should be used
 /// instead of [`Pod`].
+///
+/// # Safety
+///
+/// This is less strict and is safe as long as it is safe to reinterpret the bytes
+/// of any given `T` as a `U`. It isn't required, however, that any `U` can be
+/// reinterpreted as a `T`. It is also completely unrelated to all other types.
 pub unsafe trait Layout<T: StableLayout>: StableLayout {}
 
 unsafe impl<T: Pod, U: Pod> Layout<U> for T {}

@@ -106,3 +106,4 @@ impl core::error::Error for BrinyError {}
 
 unsafe impl crate::traits::RawConvert for BrinyError {}
 unsafe impl crate::traits::StableLayout for BrinyError {}
+unsafe impl crate::traits::Pod for BrinyError {}

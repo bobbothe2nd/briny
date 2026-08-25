@@ -65,7 +65,7 @@ make_align_fn!(align_up_u8, align_down_u8, u8);
 #[must_use]
 pub fn align_up_ptr<T>(addr: *const T, align: usize) -> *const T {
     const {
-        assert!(align_of::<T>() == 1)
+        assert!(align_of::<T>() == 1);
     }
 
     addr.with_addr(align_up(addr as usize, align))
@@ -76,7 +76,7 @@ pub fn align_up_ptr<T>(addr: *const T, align: usize) -> *const T {
 #[must_use]
 pub fn align_down_ptr<T>(addr: *const T, align: usize) -> *const T {
     const {
-        assert!(align_of::<T>() == 1)
+        assert!(align_of::<T>() == 1);
     }
 
     addr.with_addr(align_down(addr as usize, align))
@@ -105,7 +105,7 @@ pub fn align_down_ptr_valid<T>(addr: *const T) -> *const T {
 #[must_use]
 pub fn align_up_mut_ptr<T>(addr: *mut T, align: usize) -> *mut T {
     const {
-        assert!(align_of::<T>() == 1)
+        assert!(align_of::<T>() == 1);
     }
 
     addr.with_addr(align_up(addr as usize, align))
@@ -116,7 +116,7 @@ pub fn align_up_mut_ptr<T>(addr: *mut T, align: usize) -> *mut T {
 #[must_use]
 pub fn align_down_mut_ptr<T>(addr: *mut T, align: usize) -> *mut T {
     const {
-        assert!(align_of::<T>() == 1)
+        assert!(align_of::<T>() == 1);
     }
 
     addr.with_addr(align_down(addr as usize, align))
