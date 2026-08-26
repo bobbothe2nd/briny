@@ -1,6 +1,6 @@
 [package]
 name = "briny"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2021"
 rust-version = "1.89.0"
 description = "Low-level enforcement of memory layout integrity"

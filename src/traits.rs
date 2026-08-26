@@ -15,7 +15,7 @@ use core::{
     },
 };
 
-use crate::raw::nonzero::MaybeNull;
+use crate::raw::MaybeNull;
 
 /// A simple marker trait for types that have a consistent layout in memory.
 ///

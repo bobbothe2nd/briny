@@ -1,15 +1,13 @@
-//! `Option` alternative that exploits zeroed bitpatterns for memory efficiency.
-
 use crate::traits::NonNullable;
-use core::mem::{ManuallyDrop, MaybeUninit};
+use core::mem::MaybeUninit;
 
-/// Thin wrapper over `T` that safely checks when it is initialized.
-#[derive(Debug)]
-pub struct MaybeNull<T: NonNullable> {
+/// Thin wrapper over `T` that safely checks when it is initialized that implements copy.
+#[derive(Debug, Clone, Copy)]
+pub struct MaybeNullCopy<T: NonNullable + Copy> {
     inner: MaybeUninit<T>,
 }
 
-impl<T: NonNullable> MaybeNull<T> {
+impl<T: NonNullable + Copy> MaybeNullCopy<T> {
     /// Creates a zeroed bitpattern the size of a value.
     #[inline(always)]
     #[must_use]
@@ -79,7 +77,7 @@ impl<T: NonNullable> MaybeNull<T> {
     /// This does not check if the value returned is valid and could be null.
     #[inline(always)]
     pub unsafe fn into_inner_unchecked(self) -> T {
-        unsafe { ManuallyDrop::new(self).inner.assume_init_read() }
+        unsafe { self.inner.assume_init_read() }
     }
 
     /// Attempts to get a reference to the value.
@@ -140,7 +138,7 @@ impl<T: NonNullable> MaybeNull<T> {
     ///
     /// It fails if it is already initialized.
     #[inline(always)]
-    pub fn set(&mut self, val: T) -> bool {
+    pub const fn set(&mut self, val: T) -> bool {
         if self.is_null() {
             unsafe {
                 self.inner.as_mut_ptr().write(val);
@@ -152,16 +150,8 @@ impl<T: NonNullable> MaybeNull<T> {
     }
 
     /// Forces a change to the value.
-    ///
-    /// If it is already initialized, it will drop the value first.
     #[inline(always)]
-    pub fn force_set(&mut self, val: T) {
-        if self.is_init() {
-            unsafe {
-                self.drop_unchecked();
-            }
-        }
-
+    pub const fn force_set(&mut self, val: T) {
         unsafe {
             self.inner.as_mut_ptr().write(val);
         }
@@ -169,12 +159,8 @@ impl<T: NonNullable> MaybeNull<T> {
 
     /// Sets the value to null.
     #[inline(always)]
-    pub fn nullify(&mut self) {
+    pub const fn nullify(&mut self) {
         if self.is_init() {
-            unsafe {
-                self.drop_unchecked();
-            }
-
             unsafe {
                 core::ptr::write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
             }
@@ -182,27 +168,10 @@ impl<T: NonNullable> MaybeNull<T> {
     }
 
     /// Sets the value to null.
-    ///
-    /// # Safety
-    ///
-    /// Does not drop the value if it is initialized and does not check if it is already zeroed.
-    /// An unsafe (and constant) variant of [`Self::nullify`].
     #[inline(always)]
     pub const unsafe fn nullify_unchecked(&mut self) {
         unsafe {
             core::ptr::write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
-        }
-    }
-
-    /// Drops the value.
-    ///
-    /// # Safety
-    ///
-    /// Does not check if it is initialized and does not nullify it. An unsafe variant of [`Self::nullify`].
-    #[inline(always)]
-    pub unsafe fn drop_unchecked(&mut self) {
-        unsafe {
-            self.inner.assume_init_drop();
         }
     }
 
@@ -246,107 +215,4 @@ impl<T: NonNullable> MaybeNull<T> {
             if_null()
         }
     }
-}
-
-impl<T: NonNullable> Drop for MaybeNull<T> {
-    #[inline(always)]
-    fn drop(&mut self) {
-        if self.is_init() {
-            unsafe {
-                self.drop_unchecked();
-            }
-        }
-    }
-}
-
-/// Matches a `MaybeNull` value.
-///
-/// Usage:
-///
-/// ```rust
-/// let num = core::num::NonZeroU8::new(123).unwrap();
-/// let maybe_null = briny::raw::nonzero::MaybeNull::new(num);
-///
-/// let string = briny::match_null!(
-///     match &maybe_null {
-///         Init(val) => { format!("{val}") }
-///         Null => { "null".to_string() }
-///     }
-/// );
-///
-/// assert_eq!(string, "123");
-/// ```
-#[macro_export]
-macro_rules! match_null {
-    (
-        match $maybe_null:ident {
-            Init($init_val:ident) => $if_init:block
-            Null => $if_null:block
-        }
-    ) => {
-        if $maybe_null.is_init() {
-            let $init_val = unsafe { $maybe_null.into_inner_unchecked() };
-            $if_init
-        } else $if_null
-    };
-
-    (
-        match $maybe_null:ident {
-            Null => $if_null:block
-            Init($init_val:ident) => $if_init:block
-        }
-    ) => {
-        if $maybe_null.is_init() {
-            let $init_val = unsafe { $maybe_null.into_inner_unchecked() };
-            $if_init
-        } else $if_null
-    };
-
-    (
-        match &$maybe_null:ident {
-            Init($init_val:ident) => $if_init:block
-            Null => $if_null:block
-        }
-    ) => {
-        if $maybe_null.is_init() {
-            let $init_val = unsafe { $maybe_null.get_unchecked() };
-            $if_init
-        } else $if_null
-    };
-
-    (
-        match &$maybe_null:ident {
-            Null => $if_null:block
-            Init($init_val:ident) => $if_init:block
-        }
-    ) => {
-        if $maybe_null.is_init() {
-            let $init_val = unsafe { $maybe_null.get_unchecked() };
-            $if_init
-        } else $if_null
-    };
-
-    (
-        match &mut $maybe_null:ident {
-            Init($init_val:ident) => $if_init:block
-            Null => $if_null:block
-        }
-    ) => {
-        if $maybe_null.is_init() {
-            let $init_val = unsafe { $maybe_null.get_mut_unchecked() };
-            $if_init
-        } else $if_null
-    };
-
-    (
-        match &mut $maybe_null:ident {
-            Null => $if_null:block
-            Init($init_val:ident) => $if_init:block
-        }
-    ) => {
-        if $maybe_null.is_init() {
-            let $init_val = unsafe { $maybe_null.get_mut_unchecked() };
-            $if_init
-        } else $if_null
-    };
 }
