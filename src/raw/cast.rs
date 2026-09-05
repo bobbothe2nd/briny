@@ -14,17 +14,25 @@ use core::{
 /// This does NOT drop the value of `input`. Instead, it just reinterprets the bytes as type `U`.
 #[inline(always)]
 pub const fn reinterpret<T: Layout<U>, U: StableLayout>(input: T) -> U {
-    union Reinterpret<T, U> {
-        t: ManuallyDrop<T>,
-        u: ManuallyDrop<U>,
-    }
-
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
             size_of::<T>() == size_of::<U>(),
             "cannot cast between types of different sizes"
         );
+    }
+
+    unsafe { reinterpret_unchecked::<T, U>(input) }
+}
+
+/// Reinterpret the bytes of `T` as `U` *without copying* them.
+///
+/// This does NOT drop the value of `input`. Instead, it just reinterprets the bytes as type `U`.
+#[inline(always)]
+pub const unsafe fn reinterpret_unchecked<T, U>(input: T) -> U {
+    union Reinterpret<T, U> {
+        t: ManuallyDrop<T>,
+        u: ManuallyDrop<U>,
     }
 
     let u = Reinterpret {
@@ -90,22 +98,13 @@ pub fn slice_from_bytes<T: RawConvert>(bytes: &[u8]) -> Result<&[T], BrinyError>
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
 
-    let mut err = BrinyError::RESERVED;
-
     let elem_size = size_of::<T>();
 
     if !bytes.len().is_multiple_of(elem_size) {
-        err = err.add(BrinyError::UNALIGNED_ACCESS);
+        return Err(BrinyError::UNALIGNED_ACCESS);
     }
 
     let ptr = bytes.as_ptr();
-    if !(ptr as usize).is_multiple_of(align_of::<T>()) {
-        err = err.add(BrinyError::UNALIGNED_ACCESS);
-    }
-
-    if err.is_err() {
-        return Err(err);
-    }
 
     let len = bytes.len() / elem_size;
 
@@ -125,15 +124,8 @@ pub fn from_bytes<T: RawConvert>(bytes: &[u8]) -> Result<T, BrinyError> {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
 
-    let mut err = BrinyError::RESERVED;
     if bytes.len() != size_of::<T>() {
-        err = err.add(BrinyError::SIZE_BOUND_FAILURE);
-    }
-    if !(bytes.as_ptr() as usize).is_multiple_of(align_of::<T>()) {
-        err = err.add(BrinyError::UNALIGNED_ACCESS);
-    }
-    if err.is_err() {
-        return Err(err);
+        return Err(BrinyError::SIZE_BOUND_FAILURE);
     }
 
     let mut tmp = mem::MaybeUninit::<T>::uninit();
@@ -262,13 +254,9 @@ mod tests {
 
     #[test]
     fn stack_misaligned_slice_from_bytes() {
-        let mut buf = [0u8; 12];
+        let buf = [0u8; 11];
 
-        let misaligned_ptr = buf.as_mut_ptr().wrapping_add(1);
-
-        let slice = unsafe { slice::from_raw_parts(misaligned_ptr, 8) };
-
-        let result = slice_from_bytes::<u32>(slice);
+        let result = slice_from_bytes::<u32>(&buf);
         assert!(result.is_err());
     }
 

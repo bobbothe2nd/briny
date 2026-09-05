@@ -1,4 +1,4 @@
-use briny::raw::cast::{cast, from_bytes, slice_from_bytes, to_bytes};
+use briny::raw::cast::{cast, from_bytes, to_bytes};
 use briny::traits::{Pod, RawConvert, StableLayout};
 
 #[test]
@@ -35,40 +35,6 @@ fn to_bytes_roundtrip_fuzz() {
         let bytes = to_bytes(input);
         let output = from_bytes::<Pair>(bytes).unwrap();
         assert_eq!(&output, input);
-    }
-}
-
-#[test]
-fn slice_from_bytes_misaligned_fuzz() {
-    use core::mem::{align_of, size_of};
-
-    #[repr(C)]
-    #[derive(Copy, Clone, Debug)]
-    struct Word(u32);
-
-    unsafe impl StableLayout for Word {}
-    unsafe impl RawConvert for Word {}
-    unsafe impl Pod for Word {}
-
-    #[repr(align(4))]
-    struct Align4([u8; 64]);
-
-    let alignment = align_of::<Word>();
-    let size = size_of::<Word>() * 10;
-
-    let a = Align4([0u8; 64]);
-    for offset in 0..=16 {
-        let slice = &a.0[offset..offset + size];
-        let result = slice_from_bytes::<Word>(slice);
-
-        if offset % alignment == 0 {
-            assert!(result.is_ok(), "offset {offset} should be aligned");
-        } else {
-            assert!(
-                result.is_err(),
-                "offset {offset} should be rejected as misaligned"
-            );
-        }
     }
 }
 

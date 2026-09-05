@@ -10,9 +10,21 @@
 #![allow(clippy::inline_always)]
 #![no_std]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 pub mod align;
+pub mod bitpattern;
 pub mod raw;
 pub mod traits;
+
+pub(crate) mod private {
+    pub trait Private {}
+}
+
+/// Internally check if the type is private to `briny`.
+#[inline(always)]
+pub const fn if_private<T: private::Private>(_val: *const T) {}
 
 /// A general error for anything that goes wrong internally.
 ///

@@ -8,6 +8,9 @@
 //!
 //! Traits like `Pod` provide useful methods to handle this data safely.
 
+#[cfg(feature = "alloc")]
+pub mod alloc;
+
 pub mod cast;
 
 mod nonzero_copy;

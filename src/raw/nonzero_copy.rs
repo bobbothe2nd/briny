@@ -1,4 +1,4 @@
-use crate::traits::NonNullable;
+use crate::{private::Private, traits::NonNullable};
 use core::mem::MaybeUninit;
 
 /// Thin wrapper over `T` that safely checks when it is initialized that implements copy.
@@ -6,6 +6,8 @@ use core::mem::MaybeUninit;
 pub struct MaybeNullCopy<T: NonNullable + Copy> {
     inner: MaybeUninit<T>,
 }
+
+impl<T: NonNullable + Copy> Private for MaybeNullCopy<T> {}
 
 impl<T: NonNullable + Copy> MaybeNullCopy<T> {
     /// Creates a zeroed bitpattern the size of a value.

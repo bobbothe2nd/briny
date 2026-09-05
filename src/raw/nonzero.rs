@@ -1,6 +1,6 @@
 //! `Option` alternative that exploits zeroed bitpatterns for memory efficiency.
 
-use crate::traits::NonNullable;
+use crate::{private::Private, traits::NonNullable};
 use core::mem::{ManuallyDrop, MaybeUninit};
 
 /// Thin wrapper over `T` that safely checks when it is initialized.
@@ -8,6 +8,8 @@ use core::mem::{ManuallyDrop, MaybeUninit};
 pub struct MaybeNull<T: NonNullable> {
     inner: MaybeUninit<T>,
 }
+
+impl<T: NonNullable> Private for MaybeNull<T> {}
 
 impl<T: NonNullable> MaybeNull<T> {
     /// Creates a zeroed bitpattern the size of a value.
@@ -283,70 +285,82 @@ macro_rules! match_null {
             Init($init_val:ident) => $if_init:block
             Null => $if_null:block
         }
-    ) => {
+    ) => {{
+        $crate::if_private(&raw const $maybe_null);
+
         if $maybe_null.is_init() {
             let $init_val = unsafe { $maybe_null.into_inner_unchecked() };
             $if_init
         } else $if_null
-    };
+    }};
 
     (
         match $maybe_null:ident {
             Null => $if_null:block
             Init($init_val:ident) => $if_init:block
         }
-    ) => {
+    ) => {{
+        $crate::if_private(&raw const $maybe_null);
+
         if $maybe_null.is_init() {
             let $init_val = unsafe { $maybe_null.into_inner_unchecked() };
             $if_init
         } else $if_null
-    };
+    }};
 
     (
         match &$maybe_null:ident {
             Init($init_val:ident) => $if_init:block
             Null => $if_null:block
         }
-    ) => {
+    ) => {{
+        $crate::if_private(&raw const $maybe_null);
+
         if $maybe_null.is_init() {
             let $init_val = unsafe { $maybe_null.get_unchecked() };
             $if_init
         } else $if_null
-    };
+    }};
 
     (
         match &$maybe_null:ident {
             Null => $if_null:block
             Init($init_val:ident) => $if_init:block
         }
-    ) => {
+    ) => {{
+        $crate::if_private(&raw const $maybe_null);
+
         if $maybe_null.is_init() {
             let $init_val = unsafe { $maybe_null.get_unchecked() };
             $if_init
         } else $if_null
-    };
+    }};
 
     (
         match &mut $maybe_null:ident {
             Init($init_val:ident) => $if_init:block
             Null => $if_null:block
         }
-    ) => {
+    ) => {{
+        $crate::if_private(&raw const $maybe_null);
+
         if $maybe_null.is_init() {
             let $init_val = unsafe { $maybe_null.get_mut_unchecked() };
             $if_init
         } else $if_null
-    };
+    }};
 
     (
         match &mut $maybe_null:ident {
             Null => $if_null:block
             Init($init_val:ident) => $if_init:block
         }
-    ) => {
+    ) => {{
+        $crate::if_private(&raw const $maybe_null);
+
         if $maybe_null.is_init() {
             let $init_val = unsafe { $maybe_null.get_mut_unchecked() };
             $if_init
         } else $if_null
-    };
+    }};
 }

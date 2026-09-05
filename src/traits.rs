@@ -146,7 +146,8 @@ unsafe impl<T> NonNullable for &mut T {}
 /// # Safety
 ///
 /// If the compiler can safely assume the type can't represent a zeroed bitpattern,
-/// this is safe. It isn't safe to implement on `Pod` types.
+/// this is safe. It isn't safe to implement on `Pod` types. The type must have valid
+/// bitpatterns for every other type.
 pub unsafe trait CompilerAssumedNonNullable: NonNullable {}
 
 unsafe impl CompilerAssumedNonNullable for NonZeroU8 {}
@@ -169,8 +170,8 @@ unsafe impl<T> CompilerAssumedNonNullable for &mut T {}
 ///
 /// This doesn't mean any bitpattern would be valid for it, but it can be converted
 /// to/from bytes without undefined behavior EVER occurring. different from POD by
-/// enforcing that normal (non-atomic) operations are valid. This includes [`crate::ptr::read`],
-/// [`crate::ptr::write`], and all the [`core`] counterparts.
+/// enforcing that normal (non-atomic) operations are valid. This includes [`crate::ptr::read`]
+/// and [`crate::ptr::write`].
 ///
 /// # Safety
 ///
@@ -334,3 +335,51 @@ unsafe impl Pod for core::arch::x86_64::__m512i {}
 pub unsafe trait Layout<T: StableLayout>: StableLayout {}
 
 unsafe impl<T: Pod, U: Pod> Layout<U> for T {}
+
+unsafe impl Layout<NonZeroI128> for NonZeroU128 {}
+unsafe impl Layout<NonZeroU128> for NonZeroI128 {}
+
+unsafe impl Layout<NonZeroI64> for NonZeroU64 {}
+unsafe impl Layout<NonZeroU64> for NonZeroI64 {}
+
+unsafe impl Layout<NonZeroI32> for NonZeroU32 {}
+unsafe impl Layout<NonZeroU32> for NonZeroI32 {}
+
+unsafe impl Layout<NonZeroI16> for NonZeroU16 {}
+unsafe impl Layout<NonZeroU16> for NonZeroI16 {}
+
+unsafe impl Layout<NonZeroI8> for NonZeroU8 {}
+unsafe impl Layout<NonZeroU8> for NonZeroI8 {}
+
+unsafe impl Layout<NonZeroUsize> for NonZeroIsize {}
+unsafe impl Layout<NonZeroIsize> for NonZeroUsize {}
+
+#[cfg(target_pointer_width = "64")]
+unsafe impl Layout<NonZeroI64> for NonZeroUsize {}
+#[cfg(target_pointer_width = "64")]
+unsafe impl Layout<NonZeroI64> for NonZeroIsize {}
+
+#[cfg(target_pointer_width = "64")]
+unsafe impl Layout<NonZeroU64> for NonZeroUsize {}
+#[cfg(target_pointer_width = "64")]
+unsafe impl Layout<NonZeroU64> for NonZeroIsize {}
+
+#[cfg(target_pointer_width = "32")]
+unsafe impl Layout<NonZeroI32> for NonZeroUsize {}
+#[cfg(target_pointer_width = "32")]
+unsafe impl Layout<NonZeroI32> for NonZeroIsize {}
+
+#[cfg(target_pointer_width = "32")]
+unsafe impl Layout<NonZeroU32> for NonZeroUsize {}
+#[cfg(target_pointer_width = "32")]
+unsafe impl Layout<NonZeroU32> for NonZeroIsize {}
+
+#[cfg(target_pointer_width = "16")]
+unsafe impl Layout<NonZeroI16> for NonZeroUsize {}
+#[cfg(target_pointer_width = "16")]
+unsafe impl Layout<NonZeroI16> for NonZeroIsize {}
+
+#[cfg(target_pointer_width = "16")]
+unsafe impl Layout<NonZeroU16> for NonZeroUsize {}
+#[cfg(target_pointer_width = "16")]
+unsafe impl Layout<NonZeroU16> for NonZeroIsize {}
