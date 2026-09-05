@@ -19,7 +19,7 @@ pub unsafe trait InvalidPattern: StableLayout {
 
     /// Checks for one invalid bitpattern.
     #[must_use]
-    fn is_valid(self) -> bool;
+    fn is_valid(self) -> bool; // TODO: rename check_valid
 }
 
 /// Compatible with `match_null`:
@@ -46,7 +46,7 @@ impl<T: InvalidPattern> Private for NotPattern<T> {}
 impl<T: InvalidPattern> NotPattern<T> {
     /// Creates a new value.
     #[inline(always)]
-    pub fn new(val: T) -> Self {
+    pub const fn new(val: T) -> Self {
         const {
             assert!(
                 size_of::<T>() == size_of::<T::Valid>(),
@@ -59,7 +59,7 @@ impl<T: InvalidPattern> NotPattern<T> {
 
     /// Creates a null value.
     #[inline(always)]
-    pub fn null() -> Self {
+    pub const fn null() -> Self {
         const {
             assert!(
                 size_of::<T>() == size_of::<T::Valid>(),
@@ -91,7 +91,7 @@ impl<T: InvalidPattern> NotPattern<T> {
 
     /// Gets the valid value without checking initialization.
     #[inline(always)]
-    pub unsafe fn into_inner_unchecked(self) -> T::Valid {
+    pub const unsafe fn into_inner_unchecked(self) -> T::Valid {
         unsafe {
             crate::raw::cast::reinterpret_unchecked(self)
         }

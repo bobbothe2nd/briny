@@ -18,7 +18,7 @@ mod nonzero_copy;
 pub use nonzero_copy::MaybeNullCopy;
 
 #[deprecated]
-pub mod nonzero;
+pub mod nonzero; // TODO: remove pub, deprecated
 
 /// Thin wrapper over `T` that safely checks when it is initialized.
 #[allow(deprecated)]

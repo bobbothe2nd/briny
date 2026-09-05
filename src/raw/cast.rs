@@ -93,7 +93,7 @@ pub const fn to_bytes_mut<T: RawConvert>(input: &mut T) -> &mut [u8] {
 /// Instead of causing undefined behavior or panicking, this function returns an error
 /// when `bytes` is invalid (incorrect size or unaligned).
 #[inline(always)]
-pub fn slice_from_bytes<T: RawConvert>(bytes: &[u8]) -> Result<&[T], BrinyError> {
+pub const fn slice_from_bytes<T: RawConvert>(bytes: &[u8]) -> Result<&[T], BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
@@ -213,12 +213,15 @@ pub const fn cast_slice<T: Layout<U>, U: StableLayout>(input: &[T]) -> &[U] {
             size_of::<T>() > 0 && size_of::<U>() > 0,
             "cannot cast between ZSTs"
         );
+        assert!(
+            align_of::<T>() >= align_of::<U>(),
+            "original alignment must be at least as strict as cast"
+        );
     }
 
     let len = size_of_val(input) / size_of::<U>();
     let src_as_u = input.as_ptr().cast::<U>();
-    let val = unsafe { slice::from_raw_parts(src_as_u, len) };
-    val
+    unsafe { slice::from_raw_parts(src_as_u, len) }
 }
 
 /// Casts between two mutable slices of different types.
@@ -229,12 +232,15 @@ pub const fn cast_slice_mut<T: Layout<U>, U: StableLayout>(input: &mut [T]) -> &
             size_of::<T>() > 0 && size_of::<U>() > 0,
             "cannot cast between ZSTs"
         );
+        assert!(
+            align_of::<T>() >= align_of::<U>(),
+            "original alignment must be at least as strict as cast"
+        );
     }
 
     let len = size_of_val(input) / size_of::<U>();
     let src_as_u = input.as_mut_ptr().cast::<U>();
-    let val = unsafe { slice::from_raw_parts_mut(src_as_u, len) };
-    val
+    unsafe { slice::from_raw_parts_mut(src_as_u, len) }
 }
 
 #[cfg(test)]
