@@ -124,22 +124,7 @@ unsafe impl StableLayout for f128 {}
 /// when trying to optimize memory.
 pub unsafe trait NonNullable {}
 
-unsafe impl NonNullable for () {}
-unsafe impl NonNullable for NonZeroU8 {}
-unsafe impl NonNullable for NonZeroI8 {}
-unsafe impl NonNullable for NonZeroU16 {}
-unsafe impl NonNullable for NonZeroI16 {}
-unsafe impl NonNullable for NonZeroU32 {}
-unsafe impl NonNullable for NonZeroI32 {}
-unsafe impl NonNullable for NonZeroU64 {}
-unsafe impl NonNullable for NonZeroI64 {}
-unsafe impl NonNullable for NonZeroU128 {}
-unsafe impl NonNullable for NonZeroI128 {}
-unsafe impl NonNullable for NonZeroUsize {}
-unsafe impl NonNullable for NonZeroIsize {}
-unsafe impl<T> NonNullable for NonNull<T> {}
-unsafe impl<T> NonNullable for &T {}
-unsafe impl<T> NonNullable for &mut T {}
+unsafe impl<T: CompilerAssumedNonNullable> NonNullable for T {}
 
 /// Marker trait for types subject to the null pointer optimization by the compiler.
 ///
@@ -166,93 +151,25 @@ unsafe impl<T> CompilerAssumedNonNullable for NonNull<T> {}
 unsafe impl<T> CompilerAssumedNonNullable for &T {}
 unsafe impl<T> CompilerAssumedNonNullable for &mut T {}
 
-/// Marker trait for types that can be converted to/from bytes freely.
-///
-/// This doesn't mean any bitpattern would be valid for it, but it can be converted
-/// to/from bytes without undefined behavior EVER occurring. different from POD by
-/// enforcing that normal (non-atomic) operations are valid. This includes [`crate::ptr::read`]
-/// and [`crate::ptr::write`].
-///
+/// Marker trait for types that are valid to be any bitpattern that is nonzero/nonnull.
+/// 
 /// # Safety
-///
-/// If the type isn't safe to write arbitrary bytes to or from it without atomics, it would
-/// be unsound. Implementing this on a type that implements `Send` or `Sync` is usually a bad
-/// idea unless it guarantees exclusivity even when not held.
-pub unsafe trait RawConvert {}
+/// 
+/// If other bitpatterns are invalid, implementing this trait is unsound.
+pub unsafe trait AnyNonNull: CompilerAssumedNonNullable {}
 
-unsafe impl RawConvert for () {}
-unsafe impl RawConvert for u8 {}
-unsafe impl RawConvert for i8 {}
-unsafe impl RawConvert for u16 {}
-unsafe impl RawConvert for i16 {}
-unsafe impl RawConvert for u32 {}
-unsafe impl RawConvert for i32 {}
-unsafe impl RawConvert for u64 {}
-unsafe impl RawConvert for i64 {}
-unsafe impl RawConvert for u128 {}
-unsafe impl RawConvert for i128 {}
-unsafe impl RawConvert for isize {}
-unsafe impl RawConvert for usize {}
-unsafe impl RawConvert for f32 {}
-unsafe impl RawConvert for f64 {}
-unsafe impl RawConvert for bool {}
-unsafe impl RawConvert for NonZeroU8 {}
-unsafe impl RawConvert for NonZeroI8 {}
-unsafe impl RawConvert for NonZeroU16 {}
-unsafe impl RawConvert for NonZeroI16 {}
-unsafe impl RawConvert for NonZeroU32 {}
-unsafe impl RawConvert for NonZeroI32 {}
-unsafe impl RawConvert for NonZeroU64 {}
-unsafe impl RawConvert for NonZeroI64 {}
-unsafe impl RawConvert for NonZeroU128 {}
-unsafe impl RawConvert for NonZeroI128 {}
-unsafe impl RawConvert for NonZeroUsize {}
-unsafe impl RawConvert for NonZeroIsize {}
-unsafe impl<T> RawConvert for NonNull<T> {}
-unsafe impl<T: RawConvert, const N: usize> RawConvert for [T; N] {}
-unsafe impl<T: RawConvert> RawConvert for Option<T> {}
-unsafe impl<T: RawConvert> RawConvert for UnsafeCell<T> {}
-unsafe impl<T: RawConvert> RawConvert for Cell<T> {}
-unsafe impl<T: RawConvert> RawConvert for ManuallyDrop<T> {}
-unsafe impl<T: RawConvert> RawConvert for Wrapping<T> {}
-unsafe impl<T: RawConvert> RawConvert for Saturating<T> {}
-unsafe impl<T> RawConvert for PhantomData<T> {}
-unsafe impl<T: RawConvert + NonNullable> RawConvert for MaybeNull<T> {}
-
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m128 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m128bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m128d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m128i {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m256 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m256bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m256d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m256i {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m512 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m512bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m512d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl RawConvert for core::arch::x86_64::__m512i {}
-
-#[cfg(feature = "half")]
-unsafe impl RawConvert for half::f16 {}
-#[cfg(feature = "half")]
-unsafe impl RawConvert for half::bf16 {}
-
-#[cfg(feature = "nightly_float")]
-unsafe impl RawConvert for f16 {}
-#[cfg(feature = "nightly_float")]
-unsafe impl RawConvert for f128 {}
+unsafe impl AnyNonNull for NonZeroU8 {}
+unsafe impl AnyNonNull for NonZeroI8 {}
+unsafe impl AnyNonNull for NonZeroU16 {}
+unsafe impl AnyNonNull for NonZeroI16 {}
+unsafe impl AnyNonNull for NonZeroU32 {}
+unsafe impl AnyNonNull for NonZeroI32 {}
+unsafe impl AnyNonNull for NonZeroU64 {}
+unsafe impl AnyNonNull for NonZeroI64 {}
+unsafe impl AnyNonNull for NonZeroU128 {}
+unsafe impl AnyNonNull for NonZeroI128 {}
+unsafe impl AnyNonNull for NonZeroUsize {}
+unsafe impl AnyNonNull for NonZeroIsize {}
 
 /// POD marker trait for *Plain Old Data*.
 ///
@@ -263,7 +180,7 @@ unsafe impl RawConvert for f128 {}
 /// - `T` must implement [`StableLayout`] + [`RawConvert`]
 ///
 /// Violating any of these constraints is bound to cause undefined behavior.
-pub unsafe trait Pod: StableLayout + RawConvert {}
+pub unsafe trait Pod: StableLayout {}
 
 unsafe impl Pod for () {}
 unsafe impl Pod for usize {}
@@ -285,7 +202,7 @@ unsafe impl<T: Pod> Pod for ManuallyDrop<T> {}
 unsafe impl<T: Pod> Pod for Wrapping<T> {}
 unsafe impl<T: Pod> Pod for Saturating<T> {}
 unsafe impl<T: 'static> Pod for PhantomData<T> {}
-unsafe impl<T: CompilerAssumedNonNullable + RawConvert + StableLayout> Pod for Option<T> {}
+unsafe impl<T: CompilerAssumedNonNullable + AnyNonNull + StableLayout> Pod for Option<T> {}
 
 #[cfg(feature = "half")]
 unsafe impl Pod for half::f16 {}
@@ -364,6 +281,16 @@ unsafe impl Layout<NonZeroU64> for NonZeroUsize {}
 #[cfg(target_pointer_width = "64")]
 unsafe impl Layout<NonZeroU64> for NonZeroIsize {}
 
+#[cfg(target_pointer_width = "64")]
+unsafe impl Layout<NonZeroIsize> for NonZeroU64 {}
+#[cfg(target_pointer_width = "64")]
+unsafe impl Layout<NonZeroIsize> for NonZeroI64 {}
+
+#[cfg(target_pointer_width = "64")]
+unsafe impl Layout<NonZeroUsize> for NonZeroU64 {}
+#[cfg(target_pointer_width = "64")]
+unsafe impl Layout<NonZeroUsize> for NonZeroI64 {}
+
 #[cfg(target_pointer_width = "32")]
 unsafe impl Layout<NonZeroI32> for NonZeroUsize {}
 #[cfg(target_pointer_width = "32")]
@@ -374,6 +301,16 @@ unsafe impl Layout<NonZeroU32> for NonZeroUsize {}
 #[cfg(target_pointer_width = "32")]
 unsafe impl Layout<NonZeroU32> for NonZeroIsize {}
 
+#[cfg(target_pointer_width = "32")]
+unsafe impl Layout<NonZeroIsize> for NonZeroU32 {}
+#[cfg(target_pointer_width = "32")]
+unsafe impl Layout<NonZeroIsize> for NonZeroI32 {}
+
+#[cfg(target_pointer_width = "32")]
+unsafe impl Layout<NonZeroUsize> for NonZeroU64 {}
+#[cfg(target_pointer_width = "32")]
+unsafe impl Layout<NonZeroUsize> for NonZeroI32 {}
+
 #[cfg(target_pointer_width = "16")]
 unsafe impl Layout<NonZeroI16> for NonZeroUsize {}
 #[cfg(target_pointer_width = "16")]
@@ -383,3 +320,71 @@ unsafe impl Layout<NonZeroI16> for NonZeroIsize {}
 unsafe impl Layout<NonZeroU16> for NonZeroUsize {}
 #[cfg(target_pointer_width = "16")]
 unsafe impl Layout<NonZeroU16> for NonZeroIsize {}
+
+#[cfg(target_pointer_width = "16")]
+unsafe impl Layout<NonZeroIsize> for NonZeroU16 {}
+#[cfg(target_pointer_width = "16")]
+unsafe impl Layout<NonZeroIsize> for NonZeroI16 {}
+
+#[cfg(target_pointer_width = "16")]
+unsafe impl Layout<NonZeroUsize> for NonZeroU16 {}
+#[cfg(target_pointer_width = "16")]
+unsafe impl Layout<NonZeroUsize> for NonZeroI16 {}
+
+/// [[ZTA]] Trait for an unvalidated type that should be tested before trusting.
+pub trait Validate<C = ()>: Sized {
+    /// Trusted alternative to `Self`.
+    type Trusted: Trusted;
+
+    /// Validates `self`, returning `true` if valid.
+    #[must_use]
+    fn validate(&self) -> bool;
+
+    /// Validates `self`, returning `true` if valid.
+    #[must_use]
+    #[inline(always)]
+    fn validate_with(&self, _ctx: C) -> bool {
+        self.validate()
+    }
+
+    /// Trusts the type is valid, creating a [`Self::Trusted`].
+    #[must_use]
+    fn trust(self) -> Self::Trusted;
+
+    /// Calls the function if the type is valid.
+    fn get(self) -> Option<Self::Trusted> {
+        if self.validate() {
+            Some(self.trust())
+        } else {
+            None
+        }
+    }
+
+    /// Calls the function if the type is valid.
+    fn if_valid<T, F: FnOnce(Self::Trusted) -> T>(self, f: F) -> Option<T> {
+        if self.validate() {
+            Some(f(self.trust()))
+        } else {
+            None
+        }
+    }
+}
+
+impl<T: Trusted> Validate for T {
+    type Trusted = Self;
+
+    #[inline(always)]
+    fn validate(&self) -> bool {
+        true
+    }
+
+    #[inline(always)]
+    fn trust(self) -> Self::Trusted {
+        self
+    }
+}
+
+/// [[ZTA]] Marker for a trusted type in ZTA.
+pub trait Trusted {}
+
+impl<T: Pod> Trusted for T {}

@@ -1,6 +1,6 @@
 # `briny`
 
-`briny` offers typed casts, aligning functions, and type-level abstraction.
+`briny` offers typed casts, aligning functions, and type-level abstraction. A collection of small, often re-implemented functions, traits, and constants.
 
 ## Usage
 
@@ -14,21 +14,22 @@ assert_eq(b, core::mem::transmute::<u8, i8>(a));
 
 And you'd be correct to say that looks completely useless. But the best part is that it works on slices too!
 
-Wait... how is this different from bytemuck though?
+Rather than competing with `bytemuck`, `briny` complements it. This includes traits like `Layout` that say its safe to transmute type `T` to type `U` but not `U` to `T`, `T` to `_`, or `_` to `T`.
 
-1. You can cast arbitrary types using the `Layout` trait. Assume type `T` can be cast to `U` safely, but not type `V`. Just implement `T: Layout<U>`.
-2. Theres more!
+There are also alignment functions:
 
-`briny` isn't just casts, it's alignment and a `MaybeNull` structure too.
+```rust
+let addr = 123;
+let align = 16;
 
-`MaybeNull` is like `MaybeUninit` and `Option` combined into one structure. It has it's own way of optimizing zero bitpatterns, using a trait. It has a completely safe API and even has it's own macro to match over null and initialized values.
+let aligned_addr = briny::align::align_up(addr, align);
+assert_eq!(aligned_addr, 128);
+```
 
-Alignment is super easy to use in `briny` because it asserts alignment at compile time. There are functions to align all unsigned integer types and both immutable and mutable pointers at compile time. The `align` module also defines some constants that can help alignment or just manage memory in general. Particularly different units in measuring memory (byte, GB, GiB, WORD, QWORD, etc.).
+and as of `v0.8.2`, the ZTA traits have been re-implemented which have been removed since `0.3.0`. They will probably receive no major update soon.
 
 ## Contributing
 
 Contributions, bug reports, and suggestions are welcome! This project aims to help build verifiably secure foundations for low-level and embedded Rust development.
-
-### License
 
 `briny` is under an MIT license.

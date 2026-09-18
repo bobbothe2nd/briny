@@ -1,5 +1,5 @@
 use briny::raw::cast::{cast, from_bytes, to_bytes};
-use briny::traits::{Pod, RawConvert, StableLayout};
+use briny::traits::{Pod, StableLayout};
 
 #[test]
 fn to_bytes_roundtrip_fuzz() {
@@ -11,7 +11,6 @@ fn to_bytes_roundtrip_fuzz() {
     }
 
     unsafe impl StableLayout for Pair {}
-    unsafe impl RawConvert for Pair {}
     unsafe impl Pod for Pair {}
 
     let inputs: &[Pair] = &[
@@ -50,7 +49,6 @@ fn cast_struct_edge_fuzz() {
     }
 
     unsafe impl StableLayout for FourBytes {}
-    unsafe impl RawConvert for FourBytes {}
     unsafe impl Pod for FourBytes {}
 
     const _: () = {
@@ -81,7 +79,6 @@ fn roundtrip_cast_fuzz() {
         y: u16,
     }
 
-    unsafe impl RawConvert for A {}
     unsafe impl StableLayout for A {}
     unsafe impl Pod for A {}
 
@@ -89,7 +86,6 @@ fn roundtrip_cast_fuzz() {
     #[derive(Copy, Clone, Debug, PartialEq, Default)]
     struct B(u32);
 
-    unsafe impl RawConvert for B {}
     unsafe impl StableLayout for B {}
     unsafe impl Pod for B {}
 
