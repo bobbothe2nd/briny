@@ -64,7 +64,7 @@ impl<T: NonNullable + Copy> MaybeNullCopy<T> {
 
     /// Tries to convert this into an owned value.
     #[inline(always)]
-    pub fn into_inner(self) -> Option<T> {
+    pub const fn into_inner(self) -> Option<T> {
         if self.is_init() {
             unsafe { Some(self.into_inner_unchecked()) }
         } else {
@@ -78,7 +78,7 @@ impl<T: NonNullable + Copy> MaybeNullCopy<T> {
     ///
     /// This does not check if the value returned is valid and could be null.
     #[inline(always)]
-    pub unsafe fn into_inner_unchecked(self) -> T {
+    pub const unsafe fn into_inner_unchecked(self) -> T {
         unsafe { self.inner.assume_init_read() }
     }
 

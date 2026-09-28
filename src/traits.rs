@@ -152,9 +152,9 @@ unsafe impl<T> CompilerAssumedNonNullable for &T {}
 unsafe impl<T> CompilerAssumedNonNullable for &mut T {}
 
 /// Marker trait for types that are valid to be any bitpattern that is nonzero/nonnull.
-/// 
+///
 /// # Safety
-/// 
+///
 /// If other bitpatterns are invalid, implementing this trait is unsound.
 pub unsafe trait AnyNonNull: CompilerAssumedNonNullable {}
 

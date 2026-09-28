@@ -5,7 +5,9 @@ use crate::{
     BrinyError,
 };
 use core::{
-    mem::{ManuallyDrop, MaybeUninit}, ptr::{copy_nonoverlapping, from_mut, from_ref, read_unaligned}, slice,
+    mem::{ManuallyDrop, MaybeUninit},
+    ptr::{copy_nonoverlapping, from_mut, from_ref, read_unaligned},
+    slice,
 };
 
 /// Reinterpret the bytes of `T` as `U` *without copying* them.
@@ -129,7 +131,7 @@ pub fn slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], BrinyError> {
 /// Instead of causing undefined behavior or panicking, this function returns an error
 /// when `bytes` is invalid (incorrect size or unaligned).
 #[inline(always)]
-pub fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
+pub const fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
