@@ -34,7 +34,9 @@ pub const fn reinterpret<T: Layout<U>, U: StableLayout>(input: T) -> U {
 ///
 /// This does NOT drop the value of `input`. Instead, it just reinterprets the bytes as type `U`.
 ///
-/// This is equivalent to `transmute` without size checks.
+/// # Safety
+///
+/// This is equivalent to `transmute` without any compile-time safety checks
 #[inline(always)]
 pub const unsafe fn reinterpret_unchecked<T, U>(input: T) -> U {
     union Reinterpret<T, U> {
@@ -179,7 +181,7 @@ pub const fn from_bytes_unaligned<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError>
     }
 }
 
-/// Casts between two references to `Pod` types.
+/// Casts between two references like raw pointers
 #[inline(always)]
 pub const fn cast<T: Layout<U>, U: StableLayout>(input: &T) -> U {
     const {

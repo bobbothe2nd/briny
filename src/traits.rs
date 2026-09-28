@@ -41,6 +41,7 @@ unsafe impl StableLayout for isize {}
 unsafe impl StableLayout for f32 {}
 unsafe impl StableLayout for f64 {}
 unsafe impl StableLayout for bool {}
+unsafe impl StableLayout for char {}
 unsafe impl StableLayout for AtomicU8 {}
 unsafe impl StableLayout for AtomicI8 {}
 unsafe impl StableLayout for AtomicU16 {}
@@ -253,85 +254,28 @@ pub unsafe trait Layout<T: StableLayout>: StableLayout {}
 
 unsafe impl<T: Pod, U: Pod> Layout<U> for T {}
 
-unsafe impl Layout<NonZeroI128> for NonZeroU128 {}
-unsafe impl Layout<NonZeroU128> for NonZeroI128 {}
+unsafe impl<T: Pod> Layout<bool> for T {}
+unsafe impl<T: Pod> Layout<char> for T {}
 
-unsafe impl Layout<NonZeroI64> for NonZeroU64 {}
-unsafe impl Layout<NonZeroU64> for NonZeroI64 {}
+unsafe impl<T: Pod> Layout<NonZeroI128> for T {}
+unsafe impl<T: Pod> Layout<NonZeroU128> for T {}
 
-unsafe impl Layout<NonZeroI32> for NonZeroU32 {}
-unsafe impl Layout<NonZeroU32> for NonZeroI32 {}
+unsafe impl<T: Pod> Layout<NonZeroI64> for T {}
+unsafe impl<T: Pod> Layout<NonZeroU64> for T {}
 
-unsafe impl Layout<NonZeroI16> for NonZeroU16 {}
-unsafe impl Layout<NonZeroU16> for NonZeroI16 {}
+unsafe impl<T: Pod> Layout<NonZeroI32> for T {}
+unsafe impl<T: Pod> Layout<NonZeroU32> for T {}
 
-unsafe impl Layout<NonZeroI8> for NonZeroU8 {}
-unsafe impl Layout<NonZeroU8> for NonZeroI8 {}
+unsafe impl<T: Pod> Layout<NonZeroI16> for T {}
+unsafe impl<T: Pod> Layout<NonZeroU16> for T {}
 
-unsafe impl Layout<NonZeroUsize> for NonZeroIsize {}
-unsafe impl Layout<NonZeroIsize> for NonZeroUsize {}
+unsafe impl<T: Pod> Layout<NonZeroI8> for T {}
+unsafe impl<T: Pod> Layout<NonZeroU8> for T {}
 
-#[cfg(target_pointer_width = "64")]
-unsafe impl Layout<NonZeroI64> for NonZeroUsize {}
-#[cfg(target_pointer_width = "64")]
-unsafe impl Layout<NonZeroI64> for NonZeroIsize {}
+unsafe impl<T: Pod> Layout<NonZeroUsize> for T {}
+unsafe impl<T: Pod> Layout<NonZeroIsize> for T {}
 
-#[cfg(target_pointer_width = "64")]
-unsafe impl Layout<NonZeroU64> for NonZeroUsize {}
-#[cfg(target_pointer_width = "64")]
-unsafe impl Layout<NonZeroU64> for NonZeroIsize {}
-
-#[cfg(target_pointer_width = "64")]
-unsafe impl Layout<NonZeroIsize> for NonZeroU64 {}
-#[cfg(target_pointer_width = "64")]
-unsafe impl Layout<NonZeroIsize> for NonZeroI64 {}
-
-#[cfg(target_pointer_width = "64")]
-unsafe impl Layout<NonZeroUsize> for NonZeroU64 {}
-#[cfg(target_pointer_width = "64")]
-unsafe impl Layout<NonZeroUsize> for NonZeroI64 {}
-
-#[cfg(target_pointer_width = "32")]
-unsafe impl Layout<NonZeroI32> for NonZeroUsize {}
-#[cfg(target_pointer_width = "32")]
-unsafe impl Layout<NonZeroI32> for NonZeroIsize {}
-
-#[cfg(target_pointer_width = "32")]
-unsafe impl Layout<NonZeroU32> for NonZeroUsize {}
-#[cfg(target_pointer_width = "32")]
-unsafe impl Layout<NonZeroU32> for NonZeroIsize {}
-
-#[cfg(target_pointer_width = "32")]
-unsafe impl Layout<NonZeroIsize> for NonZeroU32 {}
-#[cfg(target_pointer_width = "32")]
-unsafe impl Layout<NonZeroIsize> for NonZeroI32 {}
-
-#[cfg(target_pointer_width = "32")]
-unsafe impl Layout<NonZeroUsize> for NonZeroU64 {}
-#[cfg(target_pointer_width = "32")]
-unsafe impl Layout<NonZeroUsize> for NonZeroI32 {}
-
-#[cfg(target_pointer_width = "16")]
-unsafe impl Layout<NonZeroI16> for NonZeroUsize {}
-#[cfg(target_pointer_width = "16")]
-unsafe impl Layout<NonZeroI16> for NonZeroIsize {}
-
-#[cfg(target_pointer_width = "16")]
-unsafe impl Layout<NonZeroU16> for NonZeroUsize {}
-#[cfg(target_pointer_width = "16")]
-unsafe impl Layout<NonZeroU16> for NonZeroIsize {}
-
-#[cfg(target_pointer_width = "16")]
-unsafe impl Layout<NonZeroIsize> for NonZeroU16 {}
-#[cfg(target_pointer_width = "16")]
-unsafe impl Layout<NonZeroIsize> for NonZeroI16 {}
-
-#[cfg(target_pointer_width = "16")]
-unsafe impl Layout<NonZeroUsize> for NonZeroU16 {}
-#[cfg(target_pointer_width = "16")]
-unsafe impl Layout<NonZeroUsize> for NonZeroI16 {}
-
-/// [[ZTA]] Trait for an unvalidated type that should be tested before trusting.
+/// Trait for an unvalidated type that should be tested before trusting.
 pub trait Validate<C = ()>: Sized {
     /// Trusted alternative to `Self`.
     type Trusted: Trusted;
@@ -384,7 +328,7 @@ impl<T: Trusted> Validate for T {
     }
 }
 
-/// [[ZTA]] Marker for a trusted type in ZTA.
+/// Marker for a trusted type in ZTA.
 pub trait Trusted {}
 
 impl<T: Pod> Trusted for T {}

@@ -17,9 +17,6 @@ mod nonzero_copy;
 
 pub use nonzero_copy::MaybeNullCopy;
 
-#[deprecated]
-pub mod nonzero; // TODO: remove pub, deprecated
+pub mod nonzero;
 
-/// Thin wrapper over `T` that safely checks when it is initialized.
-#[allow(deprecated)]
-pub type MaybeNull<T> = nonzero::MaybeNull<T>;
+pub use nonzero::MaybeNull;

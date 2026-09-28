@@ -1,6 +1,6 @@
 [package]
 name = "briny"
-version = "0.9.1"
+version = "0.10.0"
 edition = "2021"
 rust-version = "1.92.0"
 description = "Low-level enforcement of memory layout integrity"
@@ -21,8 +21,6 @@ readme = "README.md"
 half = { version = "2", optional = true, default-features = false }
 
 [features]
-default = ["alloc"]
-
 half = ["dep:half"]
 nightly_float = []
 alloc = []

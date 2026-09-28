@@ -2,26 +2,26 @@
 
 use crate::{
     private::Private,
-    traits::{NonNullable, StableLayout},
+    traits::{Layout, NonNullable, StableLayout},
 };
 
-/// Every bitpattern must be valid except the one pattern `is_valid` checks for.
+/// Every bitpattern must be valid except the one pattern `check_valid` checks for.
 ///
 /// # Safety
 ///
 /// If the invalid bitpattern of [`Self::INVALID`] doesn't represent the valid type,
-/// or if [`Self::is_valid`] returns `true` for that bitpattern, this is unsound
+/// or if [`Self::check_valid`] returns `true` for that bitpattern, this is unsound
 /// when used with [`NotPattern`]
 pub unsafe trait InvalidPattern: StableLayout {
     /// The initialized type to coerce to.
-    type Valid; // TODO: add Layout<Self::Valid, Self> requirement
+    type Valid: Layout<Self>;
 
     /// Defines invalid bitpattern as valid.
     const INVALID: Self;
 
     /// Checks for one invalid bitpattern.
     #[must_use]
-    fn is_valid(self) -> bool; // TODO: rename check_valid
+    fn check_valid(self) -> bool;
 }
 
 /// Compatible with `match_null`:
@@ -33,7 +33,7 @@ pub unsafe trait InvalidPattern: StableLayout {
 /// let string = briny::match_null!(
 ///     match not_pattern {
 ///         Init(val) => { format!("{val}") }
-///         Null => { "null".to_string() }
+///         Null => { "invalid".to_string() }
 ///     }
 /// );
 ///
@@ -59,9 +59,9 @@ impl<T: InvalidPattern> NotPattern<T> {
         Self(val)
     }
 
-    /// Creates a null value.
+    /// Creates an invalid value.
     #[inline(always)]
-    pub const fn null() -> Self {
+    pub const fn invalid() -> Self {
         const {
             assert!(
                 size_of::<T>() == size_of::<T::Valid>(),
@@ -75,7 +75,19 @@ impl<T: InvalidPattern> NotPattern<T> {
     /// Checks for initialization.
     #[inline(always)]
     pub fn is_init(self) -> bool {
-        self.0.is_valid()
+        self.0.check_valid()
+    }
+
+    /// Checks for initialization.
+    #[inline(always)]
+    pub fn is_invalid(self) -> bool {
+        !self.is_init()
+    }
+
+    /// Sets the type to an invalid value
+    #[inline(always)]
+    pub fn invalidate(&mut self) {
+        self.0 = T::INVALID;
     }
 
     /// Gets the valid value if initialized else `None`.
@@ -111,6 +123,7 @@ macro_rules! impl_other {
 
         unsafe impl NonNullable for $name<0> {}
         unsafe impl<const INVALID: $valid> StableLayout for $name<INVALID> {}
+        unsafe impl<const INVALID: $valid> Layout<$name<INVALID>> for $valid {}
 
         unsafe impl<const INVALID: $valid> InvalidPattern for $name<INVALID> {
             type Valid = $valid;
@@ -118,7 +131,7 @@ macro_rules! impl_other {
             const INVALID: Self = Self(INVALID);
 
             #[inline(always)]
-            fn is_valid(self) -> bool {
+            fn check_valid(self) -> bool {
                 self.0 != INVALID
             }
         }

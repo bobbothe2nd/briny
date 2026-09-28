@@ -1,5 +1,5 @@
 use crate::{private::Private, traits::NonNullable};
-use core::mem::MaybeUninit;
+use core::{mem::MaybeUninit, ptr::write_bytes};
 
 /// Thin wrapper over `T` that safely checks when it is initialized that implements copy.
 #[derive(Debug, Clone, Copy)]
@@ -163,17 +163,15 @@ impl<T: NonNullable + Copy> MaybeNullCopy<T> {
     #[inline(always)]
     pub const fn nullify(&mut self) {
         if self.is_init() {
-            unsafe {
-                core::ptr::write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
-            }
+            self.nullify_unchecked();
         }
     }
 
-    /// Sets the value to null.
+    /// Sets the value to null. This does not drop the value
     #[inline(always)]
-    pub const unsafe fn nullify_unchecked(&mut self) {
+    pub const fn nullify_unchecked(&mut self) {
         unsafe {
-            core::ptr::write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
+            write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
         }
     }
 

@@ -1,6 +1,6 @@
 //! Cast allocations and efficiently zero them.
 
-use core::mem::forget;
+use core::{mem::forget, ptr::copy_nonoverlapping};
 
 use alloc::{boxed::Box, rc::Rc, sync::Arc, vec::Vec};
 
@@ -9,35 +9,36 @@ use crate::{
     traits::{Layout, Pod, StableLayout},
 };
 
-/// Casts between two immutable slices of different types.
+/// Casts between two `Vec`s of different types.
 #[must_use]
 #[inline(always)]
 pub fn cast_vec<T: Layout<U>, U: StableLayout>(mut input: Vec<T>) -> Vec<U> {
     const {
         assert!(
-            size_of::<T>() > 0 && size_of::<U>() > 0,
+            size_of::<T>() != 0 && size_of::<U>() != 0,
             "cannot cast between ZSTs"
         );
         assert!(
-            align_of::<T>() >= align_of::<U>(),
+            align_of::<T>() == align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
     }
 
-    let input_len = size_of_val(input.as_slice());
-    let input_cap = input.capacity() * size_of::<T>();
+    let src_size = size_of_val(input.as_slice());
 
-    if input_cap == 0 {
+    let src_cap = input.capacity() * size_of::<T>();
+
+    if src_cap == 0 {
         return Vec::new();
     }
 
-    let len = input_len / size_of::<U>();
-    let cap = input_cap / size_of::<U>();
+    let dst_len = src_size.div_ceil(size_of::<U>());
+    let dst_cap = src_cap.div_ceil(size_of::<U>());
     let src_as_u = input.as_mut_ptr().cast::<U>();
 
     forget(input);
 
-    unsafe { Vec::from_raw_parts(src_as_u, len, cap) }
+    unsafe { Vec::from_raw_parts(src_as_u, dst_len, dst_cap) }
 }
 
 /// Casts between two [`Box`] pointers
@@ -45,13 +46,13 @@ pub fn cast_vec<T: Layout<U>, U: StableLayout>(mut input: Vec<T>) -> Vec<U> {
 #[inline(always)]
 pub fn cast_box<T: Layout<U>, U: StableLayout>(input: Box<T>) -> Box<U> {
     const {
-        assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+        assert!(size_of::<T>() != 0, "cannot cast between ZSTs");
         assert!(
             size_of::<T>() == size_of::<U>(),
             "cannot cast between types of different sizes"
         );
         assert!(
-            align_of::<T>() >= align_of::<U>(),
+            align_of::<T>() == align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
     }
@@ -67,7 +68,7 @@ pub fn cast_box<T: Layout<U>, U: StableLayout>(input: Box<T>) -> Box<U> {
 pub fn cast_arc<T: Layout<U>, U: StableLayout>(input: Arc<T>) -> Arc<U> {
     const {
         assert!(
-            size_of::<T>() > 0 && size_of::<U>() > 0,
+            size_of::<T>() != 0 && size_of::<U>() != 0,
             "cannot cast between ZSTs"
         );
         assert!(
@@ -75,7 +76,7 @@ pub fn cast_arc<T: Layout<U>, U: StableLayout>(input: Arc<T>) -> Arc<U> {
             "cannot cast between types of different sizes"
         );
         assert!(
-            align_of::<T>() >= align_of::<U>(),
+            align_of::<T>() == align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
     }
@@ -91,7 +92,7 @@ pub fn cast_arc<T: Layout<U>, U: StableLayout>(input: Arc<T>) -> Arc<U> {
 pub fn cast_rc<T: Layout<U>, U: StableLayout>(input: Rc<T>) -> Rc<U> {
     const {
         assert!(
-            size_of::<T>() > 0 && size_of::<U>() > 0,
+            size_of::<T>() != 0 && size_of::<U>() != 0,
             "cannot cast between ZSTs"
         );
         assert!(
@@ -99,7 +100,7 @@ pub fn cast_rc<T: Layout<U>, U: StableLayout>(input: Rc<T>) -> Rc<U> {
             "cannot cast between types of different sizes"
         );
         assert!(
-            align_of::<T>() >= align_of::<U>(),
+            align_of::<T>() == align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
     }
@@ -113,6 +114,10 @@ pub fn cast_rc<T: Layout<U>, U: StableLayout>(input: Rc<T>) -> Rc<U> {
 #[must_use]
 #[inline(always)]
 pub fn zeroed_arc<T: Pod>() -> Arc<T> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
+
     unsafe { Arc::new_zeroed().assume_init() }
 }
 
@@ -120,6 +125,10 @@ pub fn zeroed_arc<T: Pod>() -> Arc<T> {
 #[must_use]
 #[inline(always)]
 pub fn zeroed_rc<T: Pod>() -> Rc<T> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
+
     unsafe { Rc::new_zeroed().assume_init() }
 }
 
@@ -127,6 +136,10 @@ pub fn zeroed_rc<T: Pod>() -> Rc<T> {
 #[must_use]
 #[inline(always)]
 pub fn zeroed_box<T: Pod>() -> Box<T> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
+
     unsafe { Box::new_zeroed().assume_init() }
 }
 
@@ -134,6 +147,10 @@ pub fn zeroed_box<T: Pod>() -> Box<T> {
 #[must_use]
 #[inline(always)]
 pub fn zeroed_arc_slice<T: Pod>(len: usize) -> Arc<[T]> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
+
     unsafe { Arc::new_zeroed_slice(len).assume_init() }
 }
 
@@ -141,6 +158,10 @@ pub fn zeroed_arc_slice<T: Pod>(len: usize) -> Arc<[T]> {
 #[must_use]
 #[inline(always)]
 pub fn zeroed_rc_slice<T: Pod>(len: usize) -> Rc<[T]> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
+
     unsafe { Rc::new_zeroed_slice(len).assume_init() }
 }
 
@@ -148,6 +169,10 @@ pub fn zeroed_rc_slice<T: Pod>(len: usize) -> Rc<[T]> {
 #[must_use]
 #[inline(always)]
 pub fn zeroed_box_slice<T: Pod>(len: usize) -> Box<[T]> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
+
     unsafe { Box::new_zeroed_slice(len).assume_init() }
 }
 
@@ -158,12 +183,90 @@ pub fn zeroed_vec<T: Pod>(len: usize) -> Vec<T> {
     zeroed_box_slice(len).into_vec()
 }
 
-/// Collects a slice of `Pod` types into a `Vec` of a different type
-pub fn collect_reinterpret<T: Pod, U: Pod>(src: &[T]) -> Vec<U> {
-    let src_size = size_of_val(src);
+/// Creates a `Box<[T]>` with the contents copied from `slice`
+#[must_use]
+#[inline(always)]
+pub fn slice_in_box<T: Copy>(slice: &[T]) -> Box<[T]> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
 
-    let dst_pad = usize::from(!src_size.is_multiple_of(size_of::<U>()));
-    let dst_count = src_size / size_of::<U>() + dst_pad;
+    let len = slice.len();
+
+    let mut boxed = Box::new_uninit_slice(len);
+
+    unsafe {
+        copy_nonoverlapping(slice.as_ptr(), boxed.as_mut_ptr().cast(), len);
+
+        boxed.assume_init()
+    }
+}
+
+/// Creates a `Arc<[T]>` with the contents copied from `slice`
+#[must_use]
+#[inline(always)]
+pub fn slice_in_arc<T: Copy>(slice: &[T]) -> Arc<[T]> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
+
+    let len = slice.len();
+
+    let mut boxed = Arc::new_uninit_slice(len);
+
+    unsafe {
+        copy_nonoverlapping(
+            slice.as_ptr(),
+            Arc::get_mut(&mut boxed)
+                .unwrap_unchecked()
+                .as_mut_ptr()
+                .cast(),
+            len,
+        );
+
+        boxed.assume_init()
+    }
+}
+
+/// Creates a `Rc<[T]>` with the contents copied from `slice`
+#[must_use]
+#[inline(always)]
+pub fn slice_in_rc<T: Copy>(slice: &[T]) -> Rc<[T]> {
+    const {
+        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+    }
+
+    let len = slice.len();
+
+    let mut boxed = Rc::new_uninit_slice(len);
+
+    unsafe {
+        copy_nonoverlapping(
+            slice.as_ptr(),
+            Rc::get_mut(&mut boxed)
+                .unwrap_unchecked()
+                .as_mut_ptr()
+                .cast(),
+            len,
+        );
+
+        boxed.assume_init()
+    }
+}
+
+/// Collects a slice of `Pod` types into a `Vec` of a different type
+#[must_use]
+#[inline(always)]
+pub fn collect_reinterpret<T: Pod, U: Pod>(src: &[T]) -> Vec<U> {
+    const {
+        assert!(
+            size_of::<T>() != 0 && size_of::<U>() != 0,
+            "cannot cast between ZSTs"
+        );
+    }
+
+    let src_size = size_of_val(src);
+    let dst_count = src_size.div_ceil(size_of::<U>());
 
     let mut dst: Vec<U> = zeroed_vec(dst_count);
 

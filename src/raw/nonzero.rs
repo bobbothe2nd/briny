@@ -1,7 +1,10 @@
 //! `Option` alternative that exploits zeroed bitpatterns for memory efficiency.
 
 use crate::{private::Private, traits::NonNullable};
-use core::mem::{ManuallyDrop, MaybeUninit};
+use core::{
+    mem::{ManuallyDrop, MaybeUninit},
+    ptr::write_bytes,
+};
 
 /// Thin wrapper over `T` that safely checks when it is initialized.
 #[derive(Debug)]
@@ -177,22 +180,15 @@ impl<T: NonNullable> MaybeNull<T> {
                 self.drop_unchecked();
             }
 
-            unsafe {
-                core::ptr::write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
-            }
+            self.nullify_unchecked();
         }
     }
 
-    /// Sets the value to null.
-    ///
-    /// # Safety
-    ///
-    /// Does not drop the value if it is initialized and does not check if it is already zeroed.
-    /// An unsafe (and constant) variant of [`Self::nullify`].
+    /// Sets the value to null. Does not drop value
     #[inline(always)]
-    pub const unsafe fn nullify_unchecked(&mut self) {
+    pub const fn nullify_unchecked(&mut self) {
         unsafe {
-            core::ptr::write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
+            write_bytes(self.inner.as_mut_ptr().cast::<u8>(), 0, size_of::<T>());
         }
     }
 

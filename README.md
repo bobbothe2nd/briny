@@ -14,7 +14,9 @@ assert_eq(b, core::mem::transmute::<u8, i8>(a));
 
 And you'd be correct to say that looks completely useless. But the best part is that it works on slices too!
 
-Rather than competing with `bytemuck`, `briny` complements it. This includes traits like `Layout` that say its safe to transmute type `T` to type `U` but not `U` to `T`, `T` to `_`, or `_` to `T`.
+Rather than competing with `bytemuck`, `briny` complements it. This includes traits like `Layout` that have a less restricting invariant of:
+
+- `T: Layout<U>`: It's safe to transmute type `T` to type `U` but not `U` to `T`, `T` to `_`, or `_` to `T`.
 
 There are also alignment functions:
 
@@ -26,7 +28,7 @@ let aligned_addr = briny::align::align_up(addr, align);
 assert_eq!(aligned_addr, 128);
 ```
 
-and as of `v0.8.2`, the ZTA traits have been re-implemented which have been removed since `0.3.0`. They will probably receive no major update soon.
+and for advanced users, `briny::raw::cast::reinterpret_unchecked` offers an unchecked `transmute`. It still doesn't work on unsized types (thats what `transmute_copy` is for), but it does work on independently sized types. This goes well with `reinterpret`, a safe alternative to `transmute` for supported types.
 
 ## Contributing
 

@@ -22,7 +22,6 @@ pub(crate) mod private {
     pub trait Private {}
 }
 
-/// Internally check if the type is private to `briny`.
 #[doc(hidden)]
 #[inline(always)]
 pub const fn if_private<T: private::Private>(_val: *const T) {}
@@ -44,10 +43,10 @@ pub const fn if_private<T: private::Private>(_val: *const T) {}
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
 pub enum BrinyError {
-    /// types of unequal sizes
+    /// Types of unequal sizes
     SizeBoundFailure,
 
-    /// attempted creation of unaligned types
+    /// Attempted creation of unaligned types
     UnalignedAccess,
 }
 
