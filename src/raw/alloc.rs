@@ -6,13 +6,13 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc, vec::Vec};
 
 use crate::{
     raw::cast::{slice_to_bytes, slice_to_bytes_mut},
-    traits::{Layout, Pod, StableLayout},
+    traits::{Layout, Pod},
 };
 
 /// Casts between two `Vec`s of different types.
 #[must_use]
 #[inline(always)]
-pub fn cast_vec<T: Layout<U>, U: StableLayout>(mut input: Vec<T>) -> Vec<U> {
+pub fn cast_vec<T: Layout<U>, U: 'static>(mut input: Vec<T>) -> Vec<U> {
     const {
         assert!(
             size_of::<T>() != 0 && size_of::<U>() != 0,
@@ -44,7 +44,7 @@ pub fn cast_vec<T: Layout<U>, U: StableLayout>(mut input: Vec<T>) -> Vec<U> {
 /// Casts between two [`Box`] pointers
 #[must_use]
 #[inline(always)]
-pub fn cast_box<T: Layout<U>, U: StableLayout>(input: Box<T>) -> Box<U> {
+pub fn cast_box<T: Layout<U>, U: 'static>(input: Box<T>) -> Box<U> {
     const {
         assert!(size_of::<T>() != 0, "cannot cast between ZSTs");
         assert!(
@@ -65,7 +65,7 @@ pub fn cast_box<T: Layout<U>, U: StableLayout>(input: Box<T>) -> Box<U> {
 /// Casts between [`Arc`] pointers
 #[must_use]
 #[inline(always)]
-pub fn cast_arc<T: Layout<U>, U: StableLayout>(input: Arc<T>) -> Arc<U> {
+pub fn cast_arc<T: Layout<U>, U: 'static>(input: Arc<T>) -> Arc<U> {
     const {
         assert!(
             size_of::<T>() != 0 && size_of::<U>() != 0,
@@ -89,7 +89,7 @@ pub fn cast_arc<T: Layout<U>, U: StableLayout>(input: Arc<T>) -> Arc<U> {
 /// Casts between [`Rc`] pointers
 #[must_use]
 #[inline(always)]
-pub fn cast_rc<T: Layout<U>, U: StableLayout>(input: Rc<T>) -> Rc<U> {
+pub fn cast_rc<T: Layout<U>, U: 'static>(input: Rc<T>) -> Rc<U> {
     const {
         assert!(
             size_of::<T>() != 0 && size_of::<U>() != 0,
