@@ -8,7 +8,7 @@ use core::{
 
 /// Thin wrapper over `T` that safely checks when it is initialized.
 #[derive(Debug)]
-pub struct MaybeNull<T: NonNullable> {
+pub struct MaybeNull<T: NonNullable + 'static> {
     inner: MaybeUninit<T>,
 }
 

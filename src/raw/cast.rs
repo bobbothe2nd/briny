@@ -1,7 +1,7 @@
 //! Casting primitive operations.
 
 use crate::{
-    traits::{Layout, Pod, StableLayout},
+    traits::{Layout, Pod},
     BrinyError,
 };
 use core::{
@@ -14,7 +14,7 @@ use core::{
 ///
 /// This does NOT drop the value of `input`. Instead, it just reinterprets the bytes as type `U`.
 #[inline(always)]
-pub const fn reinterpret<T: Layout<U>, U: StableLayout>(input: T) -> U {
+pub const fn reinterpret<T: Layout<U>, U: 'static>(input: T) -> U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -183,7 +183,7 @@ pub const fn from_bytes_unaligned<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError>
 
 /// Casts between two references like raw pointers
 #[inline(always)]
-pub const fn cast<T: Layout<U>, U: StableLayout>(input: &T) -> U {
+pub const fn cast<T: Layout<U>, U: 'static>(input: &T) -> U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -202,7 +202,7 @@ pub const fn cast<T: Layout<U>, U: StableLayout>(input: &T) -> U {
 
 /// Casts between two immutable slices of different types.
 #[inline(always)]
-pub const fn cast_slice<T: Layout<U>, U: StableLayout>(input: &[T]) -> &[U] {
+pub const fn cast_slice<T: Layout<U>, U: 'static>(input: &[T]) -> &[U] {
     const {
         assert!(
             size_of::<T>() > 0 && size_of::<U>() > 0,
@@ -221,7 +221,7 @@ pub const fn cast_slice<T: Layout<U>, U: StableLayout>(input: &[T]) -> &[U] {
 
 /// Casts between two mutable slices of different types.
 #[inline(always)]
-pub const fn cast_slice_mut<T: Layout<U>, U: StableLayout>(input: &mut [T]) -> &mut [U] {
+pub const fn cast_slice_mut<T: Layout<U>, U: 'static>(input: &mut [T]) -> &mut [U] {
     const {
         assert!(
             size_of::<T>() > 0 && size_of::<U>() > 0,
@@ -250,7 +250,6 @@ mod tests {
     }
 
     unsafe impl crate::traits::Pod for ThePod {}
-    unsafe impl crate::traits::StableLayout for ThePod {}
 
     #[test]
     fn stack_misaligned_slice_from_bytes() {

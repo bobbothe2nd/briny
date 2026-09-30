@@ -2,27 +2,8 @@
 
 use crate::{
     private::Private,
-    traits::{Layout, NonNullable, StableLayout},
+    traits::{InvalidPattern, Layout, NonNullable},
 };
-
-/// Every bitpattern must be valid except the one pattern `check_valid` checks for.
-///
-/// # Safety
-///
-/// If the invalid bitpattern of [`Self::INVALID`] doesn't represent the valid type,
-/// or if [`Self::check_valid`] returns `true` for that bitpattern, this is unsound
-/// when used with [`NotPattern`]
-pub unsafe trait InvalidPattern: StableLayout {
-    /// The initialized type to coerce to.
-    type Valid: Layout<Self>;
-
-    /// Defines invalid bitpattern as valid.
-    const INVALID: Self;
-
-    /// Checks for one invalid bitpattern.
-    #[must_use]
-    fn check_valid(self) -> bool;
-}
 
 /// Compatible with `match_null`:
 ///
@@ -122,7 +103,6 @@ macro_rules! impl_other {
         pub struct $name<const INVALID: $valid>(pub(super) $valid);
 
         unsafe impl NonNullable for $name<0> {}
-        unsafe impl<const INVALID: $valid> StableLayout for $name<INVALID> {}
         unsafe impl<const INVALID: $valid> Layout<$name<INVALID>> for $valid {}
 
         unsafe impl<const INVALID: $valid> InvalidPattern for $name<INVALID> {

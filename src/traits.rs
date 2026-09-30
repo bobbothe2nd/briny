@@ -1,7 +1,7 @@
 //! Traits to abstract common characteristics among types.
 
 use core::{
-    cell::{Cell, LazyCell, OnceCell, RefCell, RefMut, UnsafeCell},
+    cell::{Cell, UnsafeCell},
     marker::PhantomData,
     mem::{ManuallyDrop, MaybeUninit},
     num::{
@@ -9,113 +9,9 @@ use core::{
         NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Saturating, Wrapping,
     },
     ptr::NonNull,
-    sync::atomic::{
-        AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicU16, AtomicU32,
-        AtomicU64, AtomicU8, AtomicUsize,
-    },
 };
 
 use crate::raw::MaybeNull;
-
-/// A simple marker trait for types that have a consistent layout in memory.
-///
-/// # Safety
-///
-/// If this type does not have a stable layout, this is invalid. e.g., if the type
-/// depends on something not listed in struct fields or assumes anything about the device.
-pub unsafe trait StableLayout: Sized + 'static {}
-
-unsafe impl StableLayout for () {}
-unsafe impl StableLayout for u8 {}
-unsafe impl StableLayout for i8 {}
-unsafe impl StableLayout for u16 {}
-unsafe impl StableLayout for i16 {}
-unsafe impl StableLayout for u32 {}
-unsafe impl StableLayout for i32 {}
-unsafe impl StableLayout for u64 {}
-unsafe impl StableLayout for i64 {}
-unsafe impl StableLayout for u128 {}
-unsafe impl StableLayout for i128 {}
-unsafe impl StableLayout for usize {}
-unsafe impl StableLayout for isize {}
-unsafe impl StableLayout for f32 {}
-unsafe impl StableLayout for f64 {}
-unsafe impl StableLayout for bool {}
-unsafe impl StableLayout for char {}
-unsafe impl StableLayout for AtomicU8 {}
-unsafe impl StableLayout for AtomicI8 {}
-unsafe impl StableLayout for AtomicU16 {}
-unsafe impl StableLayout for AtomicI16 {}
-unsafe impl StableLayout for AtomicU32 {}
-unsafe impl StableLayout for AtomicI32 {}
-unsafe impl StableLayout for AtomicU64 {}
-unsafe impl StableLayout for AtomicI64 {}
-unsafe impl StableLayout for AtomicUsize {}
-unsafe impl StableLayout for AtomicIsize {}
-unsafe impl StableLayout for AtomicBool {}
-unsafe impl StableLayout for NonZeroU8 {}
-unsafe impl StableLayout for NonZeroI8 {}
-unsafe impl StableLayout for NonZeroU16 {}
-unsafe impl StableLayout for NonZeroI16 {}
-unsafe impl StableLayout for NonZeroU32 {}
-unsafe impl StableLayout for NonZeroI32 {}
-unsafe impl StableLayout for NonZeroU64 {}
-unsafe impl StableLayout for NonZeroI64 {}
-unsafe impl StableLayout for NonZeroU128 {}
-unsafe impl StableLayout for NonZeroI128 {}
-unsafe impl StableLayout for NonZeroUsize {}
-unsafe impl StableLayout for NonZeroIsize {}
-unsafe impl<T: StableLayout, const N: usize> StableLayout for [T; N] {}
-unsafe impl<T: StableLayout> StableLayout for MaybeUninit<T> {}
-unsafe impl<T: 'static> StableLayout for *const T {}
-unsafe impl<T: 'static> StableLayout for *mut T {}
-unsafe impl<T: StableLayout> StableLayout for UnsafeCell<T> {}
-unsafe impl<T: StableLayout> StableLayout for Cell<T> {}
-unsafe impl<T: StableLayout> StableLayout for RefMut<'static, T> {}
-unsafe impl<T: StableLayout> StableLayout for RefCell<T> {}
-unsafe impl<T: StableLayout> StableLayout for OnceCell<T> {}
-unsafe impl<T: StableLayout> StableLayout for LazyCell<T> {}
-unsafe impl<T: StableLayout> StableLayout for ManuallyDrop<T> {}
-unsafe impl<T: StableLayout> StableLayout for Wrapping<T> {}
-unsafe impl<T: StableLayout> StableLayout for Saturating<T> {}
-unsafe impl<T: 'static> StableLayout for PhantomData<T> {}
-unsafe impl<T: StableLayout + NonNullable> StableLayout for MaybeNull<T> {}
-unsafe impl<T: StableLayout> StableLayout for Option<T> {}
-
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m128 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m128bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m128d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m128i {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m256 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m256bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m256d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m256i {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m512 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m512bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m512d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl StableLayout for core::arch::x86_64::__m512i {}
-
-#[cfg(feature = "half")]
-unsafe impl StableLayout for half::f16 {}
-#[cfg(feature = "half")]
-unsafe impl StableLayout for half::bf16 {}
-
-#[cfg(feature = "nightly_float")]
-unsafe impl StableLayout for f16 {}
-#[cfg(feature = "nightly_float")]
-unsafe impl StableLayout for f128 {}
 
 /// Marker trait for types subject to the null pointer optimization.
 ///
@@ -157,7 +53,7 @@ unsafe impl<T> CompilerAssumedNonNullable for &mut T {}
 /// # Safety
 ///
 /// If other bitpatterns are invalid, implementing this trait is unsound.
-pub unsafe trait AnyNonNull: CompilerAssumedNonNullable {}
+pub unsafe trait AnyNonNull: CompilerAssumedNonNullable + 'static {}
 
 unsafe impl AnyNonNull for NonZeroU8 {}
 unsafe impl AnyNonNull for NonZeroI8 {}
@@ -181,7 +77,7 @@ unsafe impl AnyNonNull for NonZeroIsize {}
 /// - `T` must implement [`StableLayout`] + [`RawConvert`]
 ///
 /// Violating any of these constraints is bound to cause undefined behavior.
-pub unsafe trait Pod: StableLayout {}
+pub unsafe trait Pod: 'static {}
 
 unsafe impl Pod for () {}
 unsafe impl Pod for usize {}
@@ -202,8 +98,13 @@ unsafe impl<T: Pod, const N: usize> Pod for [T; N] {}
 unsafe impl<T: Pod> Pod for ManuallyDrop<T> {}
 unsafe impl<T: Pod> Pod for Wrapping<T> {}
 unsafe impl<T: Pod> Pod for Saturating<T> {}
+unsafe impl<T: CompilerAssumedNonNullable + AnyNonNull> Pod for Option<T> {}
+unsafe impl<T: NonNullable + 'static> Pod for MaybeNull<T> {}
+unsafe impl<T: Pod> Pod for Cell<T> {}
+unsafe impl<T: Pod> Pod for UnsafeCell<T> {}
+
 unsafe impl<T: 'static> Pod for PhantomData<T> {}
-unsafe impl<T: CompilerAssumedNonNullable + AnyNonNull + StableLayout> Pod for Option<T> {}
+unsafe impl<T: 'static> Pod for MaybeUninit<T> {}
 
 #[cfg(feature = "half")]
 unsafe impl Pod for half::f16 {}
@@ -248,9 +149,9 @@ unsafe impl Pod for core::arch::x86_64::__m512i {}
 /// # Safety
 ///
 /// This is less strict and is safe as long as it is safe to reinterpret the bytes
-/// of any given `T` as a `U`. It isn't required, however, that any `U` can be
-/// reinterpreted as a `T`. It is also completely unrelated to all other types.
-pub unsafe trait Layout<T: StableLayout>: StableLayout {}
+/// of any given `Self` as a `T`. It isn't required, however, that any `T` can be
+/// reinterpreted as a `Self`. It is also completely unrelated to all other types.
+pub unsafe trait Layout<T> {}
 
 unsafe impl<T: Pod, U: Pod> Layout<U> for T {}
 
@@ -332,3 +233,22 @@ impl<T: Trusted> Validate for T {
 pub trait Trusted {}
 
 impl<T: Pod> Trusted for T {}
+
+/// Every bitpattern must be valid except the one pattern `check_valid` checks for.
+///
+/// # Safety
+///
+/// If the invalid bitpattern of [`Self::INVALID`] doesn't represent the valid type,
+/// or if [`Self::check_valid`] returns `true` for that bitpattern, this is unsound
+/// when used with [`NotPattern`]
+pub unsafe trait InvalidPattern: Sized + 'static {
+    /// The initialized type to coerce to.
+    type Valid: Layout<Self>;
+
+    /// Defines invalid bitpattern as valid.
+    const INVALID: Self;
+
+    /// Checks for one invalid bitpattern.
+    #[must_use]
+    fn check_valid(self) -> bool;
+}
