@@ -141,7 +141,7 @@ unsafe impl Pod for core::arch::x86_64::__m512d {}
 #[cfg(target_arch = "x86_64")]
 unsafe impl Pod for core::arch::x86_64::__m512i {}
 
-/// Internal trait used to determine what types are safe to cast.
+/// Marker trait used to determine what types are safe to cast.
 ///
 /// If a type is safe to cast to another type, but not any type, this should be used
 /// instead of [`Pod`].
@@ -176,63 +176,17 @@ unsafe impl<T: Pod> Layout<NonZeroU8> for T {}
 unsafe impl<T: Pod> Layout<NonZeroUsize> for T {}
 unsafe impl<T: Pod> Layout<NonZeroIsize> for T {}
 
-/// Trait for an unvalidated type that should be tested before trusting.
-pub trait Validate<C = ()>: Sized {
-    /// Trusted alternative to `Self`.
-    type Trusted: Trusted;
+/// Similar to [`Layout`], but that describes byte validity whereas this trait also requires copy safety.
+///
+/// # Safety
+///
+/// Slightly stricter than [`Layout`] and different from [`Pod`], it is safe to implement this trait on any type
+/// that is safe to copy into a type of `T`.
+///
+/// This is always safe where `Self: Copy + Layout<T>, T: Copy`.
+pub unsafe trait CopySafe<T>: Layout<T> {}
 
-    /// Validates `self`, returning `true` if valid.
-    #[must_use]
-    fn validate(&self) -> bool;
-
-    /// Validates `self`, returning `true` if valid.
-    #[must_use]
-    #[inline(always)]
-    fn validate_with(&self, _ctx: C) -> bool {
-        self.validate()
-    }
-
-    /// Trusts the type is valid, creating a [`Self::Trusted`].
-    #[must_use]
-    fn trust(self) -> Self::Trusted;
-
-    /// Calls the function if the type is valid.
-    fn get(self) -> Option<Self::Trusted> {
-        if self.validate() {
-            Some(self.trust())
-        } else {
-            None
-        }
-    }
-
-    /// Calls the function if the type is valid.
-    fn if_valid<T, F: FnOnce(Self::Trusted) -> T>(self, f: F) -> Option<T> {
-        if self.validate() {
-            Some(f(self.trust()))
-        } else {
-            None
-        }
-    }
-}
-
-impl<T: Trusted> Validate for T {
-    type Trusted = Self;
-
-    #[inline(always)]
-    fn validate(&self) -> bool {
-        true
-    }
-
-    #[inline(always)]
-    fn trust(self) -> Self::Trusted {
-        self
-    }
-}
-
-/// Marker for a trusted type in ZTA.
-pub trait Trusted {}
-
-impl<T: Pod> Trusted for T {}
+unsafe impl<T: Layout<U> + Copy, U: Copy> CopySafe<U> for T {}
 
 /// Every bitpattern must be valid except the one pattern `check_valid` checks for.
 ///

@@ -4,13 +4,16 @@
 
 ## Usage
 
-Casting
+Casting:
 
 ```rust
-let a: u8 = 1000;
-let b: i8 = briny::raw::cast:::cast(&a);
-assert_eq(b, core::mem::transmute::<u8, i8>(a));
+let a: u16 = 1000;
+let b: &i16 = briny::raw::cast::cast(&a);
+assert_eq!(*b, a.cast_signed());
 ```
+
+- `copy` for automatically copying the casted type
+- `to_bytes`/`from_bytes` for converting types to bytes.
 
 And you'd be correct to say that looks completely useless. But the best part is that it works on slices too!
 

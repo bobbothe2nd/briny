@@ -1,6 +1,5 @@
 use briny::{
-    raw::cast::{cast, from_bytes, to_bytes},
-    traits::Pod,
+    raw::cast::{cast, copy, copy_from_bytes, from_bytes, to_bytes}, traits::Pod,
 };
 
 #[test]
@@ -34,6 +33,41 @@ fn to_bytes_roundtrip_fuzz() {
     for input in inputs {
         let bytes = to_bytes(input);
         let output = from_bytes::<Pair>(bytes).unwrap();
+        assert_eq!(output, input);
+    }
+}
+
+#[test]
+fn copy_bytes_roundtrip_fuzz() {
+    #[repr(packed)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    struct Pair {
+        a: u32,
+        b: u64,
+    }
+
+    unsafe impl Pod for Pair {}
+
+    let inputs: &[Pair] = &[
+        Pair { a: 0, b: 0 },
+        Pair {
+            a: u32::MAX,
+            b: u64::MAX,
+        },
+        Pair {
+            a: 0x12345678,
+            b: 0xCAFEBABEDEADBEEF,
+        },
+        Pair { a: 1, b: 2 },
+        Pair {
+            a: 0xFFFF_FFFF,
+            b: 0,
+        },
+    ];
+
+    for input in inputs {
+        let bytes = to_bytes(input);
+        let output = copy_from_bytes::<Pair>(bytes).unwrap();
         assert_eq!(&output, input);
     }
 }
@@ -61,8 +95,8 @@ fn cast_struct_edge_fuzz() {
             for c in 0u8..=10 {
                 for d in 0u8..=10 {
                     let orig = FourBytes { a, b, c, d };
-                    let casted: u32 = cast(&orig);
-                    let back: FourBytes = cast(&casted);
+                    let casted: &u32 = cast(&orig);
+                    let back: FourBytes = copy(casted);
                     assert_eq!(orig, back);
                 }
             }
@@ -95,7 +129,7 @@ fn roundtrip_cast_fuzz() {
     for v in 0u32..100 {
         let b = B(v);
         let a = cast::<B, A>(&b);
-        let b2 = cast::<A, B>(&a);
+        let b2 = copy::<A, B>(a);
         assert_eq!(b, b2, "roundtrip failed for value {v}");
     }
 }
