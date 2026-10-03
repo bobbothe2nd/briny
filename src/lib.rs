@@ -66,4 +66,4 @@ unsafe impl crate::traits::Layout<u8> for BrinyError {}
 
 #[allow(dead_code)]
 #[doc = include_str!("../README.md")]
-fn test() {}
+const fn test() {}

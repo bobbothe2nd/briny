@@ -1,7 +1,8 @@
 //! Casting primitive operations.
 
 use crate::{
-    BrinyError, traits::{CopySafe, Layout, Pod},
+    traits::{CopySafe, Layout, Pod},
+    BrinyError,
 };
 use core::{
     mem::ManuallyDrop,
@@ -178,9 +179,7 @@ pub fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, BrinyError> {
         return Err(BrinyError::UnalignedAccess);
     }
 
-    unsafe {
-        Ok(&*ptr)
-    }
+    unsafe { Ok(&*ptr) }
 }
 
 /// Attempts to get a mutable value from raw bytes.
@@ -205,9 +204,7 @@ pub fn from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut T, BrinyError> {
         return Err(BrinyError::UnalignedAccess);
     }
 
-    unsafe {
-        Ok(&mut *ptr)
-    }
+    unsafe { Ok(&mut *ptr) }
 }
 
 /// Attempts to reinterpret a slice as a new type
@@ -226,9 +223,7 @@ pub const fn copy_from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
         return Err(BrinyError::SizeBoundFailure);
     }
 
-    unsafe {
-        Ok(read_unaligned(bytes.as_ptr().cast::<T>()))
-    }
+    unsafe { Ok(read_unaligned(bytes.as_ptr().cast::<T>())) }
 }
 
 /// Copies `input` to a new location as a new type
@@ -422,7 +417,7 @@ mod tests {
         let mut buffer = [0u8; 8];
         buffer[1..5].copy_from_slice(&val.to_le_bytes());
         let slice = &buffer[1..5];
-        let result = *from_bytes::<u32>(slice).unwrap();
+        let result = copy_from_bytes::<u32>(slice).unwrap();
         assert_eq!(result, val);
     }
 }

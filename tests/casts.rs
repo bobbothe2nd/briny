@@ -1,5 +1,6 @@
 use briny::{
-    raw::cast::{cast, copy, copy_from_bytes, from_bytes, to_bytes}, traits::Pod,
+    raw::cast::{cast, copy, copy_from_bytes, from_bytes, to_bytes},
+    traits::Pod,
 };
 
 #[test]
