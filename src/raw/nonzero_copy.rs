@@ -1,6 +1,8 @@
 use crate::{private::Private, traits::NonNullable};
 use core::{mem::MaybeUninit, ptr::write_bytes};
 
+// add : NoUninitPadding
+
 /// Thin wrapper over `T` that safely checks when it is initialized that implements copy.
 #[derive(Debug, Clone, Copy)]
 pub struct MaybeNullCopy<T: NonNullable + Copy + 'static> {

@@ -6,6 +6,8 @@ use core::{
     ptr::write_bytes,
 };
 
+// add : NoUninitPadding
+
 /// Thin wrapper over `T` that safely checks when it is initialized.
 #[derive(Debug)]
 pub struct MaybeNull<T: NonNullable + 'static> {

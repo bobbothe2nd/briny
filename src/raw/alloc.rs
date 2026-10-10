@@ -186,6 +186,7 @@ pub fn zeroed_vec<T: Pod>(len: usize) -> Vec<T> {
 /// Creates a `Box<[T]>` with the contents copied from `slice`
 #[must_use]
 #[inline(always)]
+#[deprecated = "use Box::from"]
 pub fn slice_in_box<T: Copy>(slice: &[T]) -> Box<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
@@ -205,6 +206,7 @@ pub fn slice_in_box<T: Copy>(slice: &[T]) -> Box<[T]> {
 /// Creates a `Arc<[T]>` with the contents copied from `slice`
 #[must_use]
 #[inline(always)]
+#[deprecated = "use Arc::from"]
 pub fn slice_in_arc<T: Copy>(slice: &[T]) -> Arc<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
@@ -231,6 +233,7 @@ pub fn slice_in_arc<T: Copy>(slice: &[T]) -> Arc<[T]> {
 /// Creates a `Rc<[T]>` with the contents copied from `slice`
 #[must_use]
 #[inline(always)]
+#[deprecated = "use Rc::from"]
 pub fn slice_in_rc<T: Copy>(slice: &[T]) -> Rc<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");

@@ -44,6 +44,10 @@ pub const unsafe fn reinterpret_unchecked<T, U>(input: T) -> U {
         u: ManuallyDrop<U>,
     }
 
+    unsafe {
+        core::hint::assert_unchecked(size_of::<T>() == size_of::<U>());
+    }
+
     let u = Reinterpret {
         t: ManuallyDrop::new(input),
     };
