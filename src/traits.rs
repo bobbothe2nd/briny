@@ -155,44 +155,44 @@ pub unsafe trait Layout<T> {}
 
 unsafe impl<T: Pod, U: Pod> Layout<U> for T {}
 
-unsafe impl<T: Pod> Layout<bool> for T {}
-unsafe impl<T: Pod> Layout<char> for T {}
+unsafe impl<T: AnyNonNull> Layout<bool> for T {}
+unsafe impl<T: AnyNonNull> Layout<char> for T {}
 
 unsafe impl<T: Pod> Layout<NonZeroI128> for T {}
-unsafe impl<T: Pod> Layout<NonZeroU128> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroU128> for T {}
 
-unsafe impl<T: Pod> Layout<NonZeroI64> for T {}
-unsafe impl<T: Pod> Layout<NonZeroU64> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroI64> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroU64> for T {}
 
-unsafe impl<T: Pod> Layout<NonZeroI32> for T {}
-unsafe impl<T: Pod> Layout<NonZeroU32> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroI32> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroU32> for T {}
 
-unsafe impl<T: Pod> Layout<NonZeroI16> for T {}
-unsafe impl<T: Pod> Layout<NonZeroU16> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroI16> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroU16> for T {}
 
-unsafe impl<T: Pod> Layout<NonZeroI8> for T {}
-unsafe impl<T: Pod> Layout<NonZeroU8> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroI8> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroU8> for T {}
 
-unsafe impl<T: Pod> Layout<NonZeroUsize> for T {}
-unsafe impl<T: Pod> Layout<NonZeroIsize> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroUsize> for T {}
+unsafe impl<T: AnyNonNull> Layout<NonZeroIsize> for T {}
 
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroU128 {}
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroI128 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroU128 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroI128 {}
 
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroU64 {}
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroI64 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroU64 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroI64 {}
 
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroU32 {}
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroI32 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroU32 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroI32 {}
 
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroU16 {}
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroI16 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroU16 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroI16 {}
 
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroU8 {}
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroI8 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroU8 {}
+unsafe impl<T: Pod> Layout<T> for NonZeroI8 {}
 
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroUsize {}
-unsafe impl<T: AnyNonNull> Layout<T> for NonZeroIsize {}
+unsafe impl<T: Pod> Layout<T> for NonZeroUsize {}
+unsafe impl<T: Pod> Layout<T> for NonZeroIsize {}
 
 unsafe impl<T: AnyNonNull, U> Layout<NonNull<U>> for T {}
 

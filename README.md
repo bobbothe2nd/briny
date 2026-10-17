@@ -21,6 +21,8 @@ Rather than competing with `bytemuck`, `briny` complements it. This includes tra
 
 - `T: Layout<U>`: It's safe to transmute type `T` to type `U` but not `U` to `T`, `T` to `_`, or `_` to `T`.
 
+This is useful when for casting `NonNull<T>` to `*mut T` or `NonZeroU8` to `u8`, even when `u8` to `NonZeroU8` is invalid.
+
 There are also alignment functions:
 
 ```rust
