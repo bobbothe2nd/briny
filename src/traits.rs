@@ -233,82 +233,93 @@ pub unsafe trait InvalidPattern: Sized + 'static {
 ///
 /// Rust considers it undefined behavior to read padding bytes of any type.
 /// These padding bytes are uninitialized with values unspecified.
+#[deprecated = "just use Pod"]
 pub unsafe trait NoUninitPadding {}
 
-unsafe impl NoUninitPadding for () {}
-unsafe impl NoUninitPadding for usize {}
-unsafe impl NoUninitPadding for u8 {}
-unsafe impl NoUninitPadding for u16 {}
-unsafe impl NoUninitPadding for u32 {}
-unsafe impl NoUninitPadding for u64 {}
-unsafe impl NoUninitPadding for u128 {}
-unsafe impl NoUninitPadding for isize {}
-unsafe impl NoUninitPadding for i8 {}
-unsafe impl NoUninitPadding for i16 {}
-unsafe impl NoUninitPadding for i32 {}
-unsafe impl NoUninitPadding for i64 {}
-unsafe impl NoUninitPadding for i128 {}
-unsafe impl NoUninitPadding for f32 {}
-unsafe impl NoUninitPadding for f64 {}
-unsafe impl<T: NoUninitPadding, const N: usize> NoUninitPadding for [T; N] {}
-unsafe impl<T: NoUninitPadding> NoUninitPadding for ManuallyDrop<T> {}
-unsafe impl<T: NoUninitPadding> NoUninitPadding for Wrapping<T> {}
-unsafe impl<T: NoUninitPadding> NoUninitPadding for Saturating<T> {}
-unsafe impl<T: CompilerAssumedNonNullable + AnyNonNull> NoUninitPadding for Option<T> {}
-unsafe impl<T: NonNullable + 'static> NoUninitPadding for MaybeNull<T> {}
-unsafe impl<T: NoUninitPadding> NoUninitPadding for Cell<T> {}
-unsafe impl<T: NoUninitPadding> NoUninitPadding for UnsafeCell<T> {}
+#[allow(deprecated)]
+mod uninit {
+    use super::{
+        AnyNonNull, Cell, CompilerAssumedNonNullable, ManuallyDrop, MaybeNull, MaybeUninit,
+        NoUninitPadding, NonNull, NonNullable, NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64,
+        NonZeroI8, NonZeroIsize, NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8,
+        NonZeroUsize, PhantomData, Saturating, UnsafeCell, Wrapping,
+    };
 
-unsafe impl<T: 'static> NoUninitPadding for PhantomData<T> {}
-unsafe impl<T: 'static> NoUninitPadding for MaybeUninit<T> {}
+    unsafe impl NoUninitPadding for () {}
+    unsafe impl NoUninitPadding for usize {}
+    unsafe impl NoUninitPadding for u8 {}
+    unsafe impl NoUninitPadding for u16 {}
+    unsafe impl NoUninitPadding for u32 {}
+    unsafe impl NoUninitPadding for u64 {}
+    unsafe impl NoUninitPadding for u128 {}
+    unsafe impl NoUninitPadding for isize {}
+    unsafe impl NoUninitPadding for i8 {}
+    unsafe impl NoUninitPadding for i16 {}
+    unsafe impl NoUninitPadding for i32 {}
+    unsafe impl NoUninitPadding for i64 {}
+    unsafe impl NoUninitPadding for i128 {}
+    unsafe impl NoUninitPadding for f32 {}
+    unsafe impl NoUninitPadding for f64 {}
+    unsafe impl<T: NoUninitPadding, const N: usize> NoUninitPadding for [T; N] {}
+    unsafe impl<T: NoUninitPadding> NoUninitPadding for ManuallyDrop<T> {}
+    unsafe impl<T: NoUninitPadding> NoUninitPadding for Wrapping<T> {}
+    unsafe impl<T: NoUninitPadding> NoUninitPadding for Saturating<T> {}
+    unsafe impl<T: CompilerAssumedNonNullable + AnyNonNull> NoUninitPadding for Option<T> {}
+    unsafe impl<T: NonNullable + 'static> NoUninitPadding for MaybeNull<T> {}
+    unsafe impl<T: NoUninitPadding> NoUninitPadding for Cell<T> {}
+    unsafe impl<T: NoUninitPadding> NoUninitPadding for UnsafeCell<T> {}
 
-#[cfg(feature = "half")]
-unsafe impl NoUninitPadding for half::f16 {}
-#[cfg(feature = "half")]
-unsafe impl NoUninitPadding for half::bf16 {}
+    unsafe impl<T: 'static> NoUninitPadding for PhantomData<T> {}
+    unsafe impl<T: 'static> NoUninitPadding for MaybeUninit<T> {}
 
-#[cfg(feature = "nightly_float")]
-unsafe impl NoUninitPadding for f16 {}
-#[cfg(feature = "nightly_float")]
-unsafe impl NoUninitPadding for f128 {}
+    #[cfg(feature = "half")]
+    unsafe impl NoUninitPadding for half::f16 {}
+    #[cfg(feature = "half")]
+    unsafe impl NoUninitPadding for half::bf16 {}
 
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m128 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m128bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m128d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m128i {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m256 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m256bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m256d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m256i {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m512 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m512bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m512d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl NoUninitPadding for core::arch::x86_64::__m512i {}
+    #[cfg(feature = "nightly_float")]
+    unsafe impl NoUninitPadding for f16 {}
+    #[cfg(feature = "nightly_float")]
+    unsafe impl NoUninitPadding for f128 {}
 
-unsafe impl NoUninitPadding for NonZeroU8 {}
-unsafe impl NoUninitPadding for NonZeroI8 {}
-unsafe impl NoUninitPadding for NonZeroU16 {}
-unsafe impl NoUninitPadding for NonZeroI16 {}
-unsafe impl NoUninitPadding for NonZeroU32 {}
-unsafe impl NoUninitPadding for NonZeroI32 {}
-unsafe impl NoUninitPadding for NonZeroU64 {}
-unsafe impl NoUninitPadding for NonZeroI64 {}
-unsafe impl NoUninitPadding for NonZeroU128 {}
-unsafe impl NoUninitPadding for NonZeroI128 {}
-unsafe impl NoUninitPadding for NonZeroUsize {}
-unsafe impl NoUninitPadding for NonZeroIsize {}
-unsafe impl<T> NoUninitPadding for NonNull<T> {}
-unsafe impl<T> NoUninitPadding for &T {}
-unsafe impl<T> NoUninitPadding for &mut T {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m128 {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m128bh {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m128d {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m128i {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m256 {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m256bh {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m256d {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m256i {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m512 {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m512bh {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m512d {}
+    #[cfg(target_arch = "x86_64")]
+    unsafe impl NoUninitPadding for core::arch::x86_64::__m512i {}
+
+    unsafe impl NoUninitPadding for NonZeroU8 {}
+    unsafe impl NoUninitPadding for NonZeroI8 {}
+    unsafe impl NoUninitPadding for NonZeroU16 {}
+    unsafe impl NoUninitPadding for NonZeroI16 {}
+    unsafe impl NoUninitPadding for NonZeroU32 {}
+    unsafe impl NoUninitPadding for NonZeroI32 {}
+    unsafe impl NoUninitPadding for NonZeroU64 {}
+    unsafe impl NoUninitPadding for NonZeroI64 {}
+    unsafe impl NoUninitPadding for NonZeroU128 {}
+    unsafe impl NoUninitPadding for NonZeroI128 {}
+    unsafe impl NoUninitPadding for NonZeroUsize {}
+    unsafe impl NoUninitPadding for NonZeroIsize {}
+    unsafe impl<T> NoUninitPadding for NonNull<T> {}
+    unsafe impl<T> NoUninitPadding for &T {}
+    unsafe impl<T> NoUninitPadding for &mut T {}
+}
