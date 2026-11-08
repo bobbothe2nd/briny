@@ -5,16 +5,15 @@ use crate::{
     BrinyError,
 };
 use core::{
-    mem::ManuallyDrop,
     ptr::{from_mut, from_ref, read_unaligned},
     slice,
 };
 
 /// Reinterpret the bytes of `T` as `U` *without copying* them.
 ///
-/// This does NOT drop the value of `input`. Instead, it just reinterprets the bytes as type `U`.
+/// This does NOT drop the value of `src`. Instead, it just reinterprets the bytes as type `U`.
 #[inline(always)]
-pub const fn reinterpret<T: Layout<U>, U>(input: T) -> U {
+pub const fn reinterpret<T: Layout<U>, U>(src: T) -> U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -27,32 +26,41 @@ pub const fn reinterpret<T: Layout<U>, U>(input: T) -> U {
         );
     }
 
-    unsafe { reinterpret_unchecked::<T, U>(input) }
+    unsafe { reinterpret_unchecked::<T, U>(src) }
 }
 
 /// Reinterpret the bytes of `T` as `U` *without copying* them.
 ///
-/// This does NOT drop the value of `input`. Instead, it just reinterprets the bytes as type `U`.
+/// This does NOT drop the value of `src`. Instead, it just reinterprets the bytes as type `U`.
 ///
 /// # Safety
 ///
 /// This is equivalent to `transmute` without any compile-time safety checks
 #[inline(always)]
-pub const unsafe fn reinterpret_unchecked<T, U>(input: T) -> U {
-    union Reinterpret<T, U> {
-        t: ManuallyDrop<T>,
-        u: ManuallyDrop<U>,
+pub const unsafe fn reinterpret_unchecked<T, U>(src: T) -> U {
+    #[cfg(feature = "stable_intr")]
+    {
+        stable_intr::transmute_unchecked(src)
     }
-
-    unsafe {
-        core::hint::assert_unchecked(size_of::<T>() == size_of::<U>());
+    #[cfg(feature = "nightly_intr")]
+    {
+        core::intrinsics::transmute_unchecked(src)
     }
+    #[cfg(not(any(feature = "stable_intr", feature = "nightly_intr")))]
+    {
+        use core::mem::ManuallyDrop;
 
-    let u = Reinterpret {
-        t: ManuallyDrop::new(input),
-    };
+        union Reinterpret<T, U> {
+            t: ManuallyDrop<T>,
+            u: ManuallyDrop<U>,
+        }
 
-    unsafe { ManuallyDrop::into_inner(u.u) }
+        let u = Reinterpret {
+            t: ManuallyDrop::new(src),
+        };
+
+        unsafe { ManuallyDrop::into_inner(u.u) }
+    }
 }
 
 /// Converts any slice to bytes.
@@ -81,22 +89,22 @@ pub const fn slice_to_bytes_mut<T: Pod>(slice: &mut [T]) -> &mut [u8] {
 
 /// Converts any reference to a `Pod` type to bytes.
 #[inline(always)]
-pub const fn to_bytes<T: Pod>(input: &T) -> &[u8] {
+pub const fn to_bytes<T: Pod>(src: &T) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
 
-    unsafe { slice::from_raw_parts(from_ref::<T>(input).cast::<u8>(), size_of::<T>()) }
+    unsafe { slice::from_raw_parts(from_ref::<T>(src).cast::<u8>(), size_of::<T>()) }
 }
 
 /// Converts any mutable reference to a `Pod` type to bytes.
 #[inline(always)]
-pub const fn to_bytes_mut<T: Pod>(input: &mut T) -> &mut [u8] {
+pub const fn to_bytes_mut<T: Pod>(src: &mut T) -> &mut [u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
     }
 
-    unsafe { slice::from_raw_parts_mut(from_mut::<T>(input).cast::<u8>(), size_of::<T>()) }
+    unsafe { slice::from_raw_parts_mut(from_mut::<T>(src).cast::<u8>(), size_of::<T>()) }
 }
 
 /// Attempts to get a slice from raw bytes.
@@ -230,9 +238,9 @@ pub const fn copy_from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
     unsafe { Ok(read_unaligned(bytes.as_ptr().cast::<T>())) }
 }
 
-/// Copies `input` to a new location as a new type
+/// Copies `src` to a new location as a new type
 #[inline(always)]
-pub const fn copy<T: CopySafe<U>, U>(input: &T) -> U {
+pub const fn copy<T: CopySafe<U>, U>(src: &T) -> U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -245,13 +253,13 @@ pub const fn copy<T: CopySafe<U>, U>(input: &T) -> U {
         );
     }
 
-    let src_as_u = from_ref(input).cast::<U>();
+    let src_as_u = from_ref(src).cast::<U>();
     unsafe { read_unaligned(src_as_u) }
 }
 
 /// Casts between two references like raw pointers
 #[inline(always)]
-pub const fn cast<T: Layout<U>, U>(input: &T) -> &U {
+pub const fn cast<T: Layout<U>, U>(src: &T) -> &U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -264,13 +272,13 @@ pub const fn cast<T: Layout<U>, U>(input: &T) -> &U {
         );
     }
 
-    let src_as_u = from_ref(input).cast::<U>();
+    let src_as_u = from_ref(src).cast::<U>();
     unsafe { &*src_as_u }
 }
 
 /// Casts between two mutable references like raw pointers
 #[inline(always)]
-pub const fn cast_mut<T: Layout<U>, U>(input: &mut T) -> &mut U {
+pub const fn cast_mut<T: Layout<U>, U>(src: &mut T) -> &mut U {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -283,13 +291,13 @@ pub const fn cast_mut<T: Layout<U>, U>(input: &mut T) -> &mut U {
         );
     }
 
-    let src_as_u = from_mut(input).cast::<U>();
+    let src_as_u = from_mut(src).cast::<U>();
     unsafe { &mut *src_as_u }
 }
 
 /// Casts between two immutable slices of different types.
 #[inline]
-pub const fn cast_slice<T: Layout<U>, U>(input: &[T]) -> &[U] {
+pub const fn cast_slice<T: Layout<U>, U>(src: &[T]) -> &[U] {
     const {
         assert!(
             size_of::<T>() > 0 && size_of::<U>() > 0,
@@ -301,14 +309,14 @@ pub const fn cast_slice<T: Layout<U>, U>(input: &[T]) -> &[U] {
         );
     }
 
-    let len = size_of_val(input) / size_of::<U>();
-    let src_as_u = input.as_ptr().cast::<U>();
+    let len = size_of_val(src) / size_of::<U>();
+    let src_as_u = src.as_ptr().cast::<U>();
     unsafe { slice::from_raw_parts(src_as_u, len) }
 }
 
 /// Casts between two mutable slices of different types.
 #[inline]
-pub const fn cast_slice_mut<T: Layout<U>, U>(input: &mut [T]) -> &mut [U] {
+pub const fn cast_slice_mut<T: Layout<U>, U>(src: &mut [T]) -> &mut [U] {
     const {
         assert!(
             size_of::<T>() > 0 && size_of::<U>() > 0,
@@ -320,8 +328,8 @@ pub const fn cast_slice_mut<T: Layout<U>, U>(input: &mut [T]) -> &mut [U] {
         );
     }
 
-    let len = size_of_val(input) / size_of::<U>();
-    let src_as_u = input.as_mut_ptr().cast::<U>();
+    let len = size_of_val(src) / size_of::<U>();
+    let src_as_u = src.as_mut_ptr().cast::<U>();
     unsafe { slice::from_raw_parts_mut(src_as_u, len) }
 }
 

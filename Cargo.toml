@@ -1,6 +1,6 @@
 [package]
 name = "briny"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 rust-version = "1.92.0"
 description = "Low-level enforcement of memory layout integrity"
@@ -19,8 +19,24 @@ readme = "README.md"
 
 [dependencies]
 half = { version = "2", optional = true, default-features = false }
+stable_intr = { version = "0.1.2", optional = true, default-features = false }
 
 [features]
-half = ["dep:half"]
-nightly_float = []
+default = ["half", "alloc", "stable_intr"]
+
+# depends on alloc, still no_std
 alloc = []
+
+# supports f16/bf16 via half dependency
+half = ["dep:half"]
+
+nightly = []
+
+# supports f16/f128 via nightly
+nightly_float = ["nightly"]
+
+# intrinsics via nightly
+nightly_intr = ["nightly"]
+
+# intrinsics via stable_intr dependency
+stable_intr = ["stable_intr/transmute"]

@@ -1,5 +1,6 @@
 //! Functions, traits, methods, and types to improve memory integrity.
 
+#![cfg_attr(feature = "nightly_intr", feature(core_intrinsics))]
 #![forbid(missing_docs)]
 #![forbid(unused_must_use)]
 #![deny(clippy::all)]
