@@ -22,7 +22,7 @@ half = { version = "2", optional = true, default-features = false }
 stable_intr = { version = "0.1.2", optional = true, default-features = false }
 
 [features]
-default = ["half", "alloc", "stable_intr"]
+default = ["half", "alloc", "nightly_intr"]
 
 # depends on alloc, still no_std
 alloc = []
@@ -36,7 +36,7 @@ nightly = []
 nightly_float = ["nightly"]
 
 # intrinsics via nightly
-nightly_intr = ["nightly"]
+nightly_intr = ["stable_intr/nightly", "stable_intr"]
 
 # intrinsics via stable_intr dependency
-stable_intr = ["stable_intr/transmute"]
+stable_intr = ["stable_intr/transmute", "stable_intr/assert_type"]

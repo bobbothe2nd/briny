@@ -15,7 +15,6 @@ use core::{
 #[inline(always)]
 pub const fn reinterpret<T: Layout<U>, U>(src: T) -> U {
     const {
-        assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
             size_of::<T>() == size_of::<U>(),
             "cannot cast between types of different sizes"
@@ -24,6 +23,12 @@ pub const fn reinterpret<T: Layout<U>, U>(src: T) -> U {
             align_of::<T>() >= align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     unsafe { reinterpret_unchecked::<T, U>(src) }
@@ -42,10 +47,7 @@ pub const unsafe fn reinterpret_unchecked<T, U>(src: T) -> U {
     {
         stable_intr::transmute_unchecked(src)
     }
-    #[cfg(feature = "nightly_intr")]
-    {
-        core::intrinsics::transmute_unchecked(src)
-    }
+
     #[cfg(not(any(feature = "stable_intr", feature = "nightly_intr")))]
     {
         use core::mem::ManuallyDrop;
@@ -68,6 +70,11 @@ pub const unsafe fn reinterpret_unchecked<T, U>(src: T) -> U {
 pub const fn slice_to_bytes<T: Pod>(slice: &[T]) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     let ptr = slice.as_ptr().cast::<u8>();
@@ -80,6 +87,11 @@ pub const fn slice_to_bytes<T: Pod>(slice: &[T]) -> &[u8] {
 pub const fn slice_to_bytes_mut<T: Pod>(slice: &mut [T]) -> &mut [u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     let ptr = slice.as_mut_ptr().cast::<u8>();
@@ -92,6 +104,11 @@ pub const fn slice_to_bytes_mut<T: Pod>(slice: &mut [T]) -> &mut [u8] {
 pub const fn to_bytes<T: Pod>(src: &T) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     unsafe { slice::from_raw_parts(from_ref::<T>(src).cast::<u8>(), size_of::<T>()) }
@@ -102,6 +119,11 @@ pub const fn to_bytes<T: Pod>(src: &T) -> &[u8] {
 pub const fn to_bytes_mut<T: Pod>(src: &mut T) -> &mut [u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     unsafe { slice::from_raw_parts_mut(from_mut::<T>(src).cast::<u8>(), size_of::<T>()) }
@@ -117,6 +139,11 @@ pub const fn to_bytes_mut<T: Pod>(src: &mut T) -> &mut [u8] {
 pub fn slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     let elem_size = size_of::<T>();
@@ -148,6 +175,11 @@ pub fn slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], BrinyError> {
 pub fn slice_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut [T], BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     let elem_size = size_of::<T>();
@@ -179,6 +211,11 @@ pub fn slice_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut [T], BrinyE
 pub fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     if bytes.len() != size_of::<T>() {
@@ -204,6 +241,11 @@ pub fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, BrinyError> {
 pub fn from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     if bytes.len() != size_of::<T>() {
@@ -229,6 +271,11 @@ pub fn from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut T, BrinyError> {
 pub const fn copy_from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     if bytes.len() != size_of::<T>() {
@@ -251,6 +298,12 @@ pub const fn copy<T: CopySafe<U>, U>(src: &T) -> U {
             align_of::<T>() >= align_of::<U>(),
             "cannot cast unaligned types"
         );
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let src_as_u = from_ref(src).cast::<U>();
@@ -270,6 +323,12 @@ pub const fn cast<T: Layout<U>, U>(src: &T) -> &U {
             align_of::<T>() >= align_of::<U>(),
             "cannot cast unaligned types"
         );
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let src_as_u = from_ref(src).cast::<U>();
@@ -289,6 +348,12 @@ pub const fn cast_mut<T: Layout<U>, U>(src: &mut T) -> &mut U {
             align_of::<T>() >= align_of::<U>(),
             "cannot cast unaligned types"
         );
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let src_as_u = from_mut(src).cast::<U>();
@@ -307,6 +372,12 @@ pub const fn cast_slice<T: Layout<U>, U>(src: &[T]) -> &[U] {
             align_of::<T>() >= align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let len = size_of_val(src) / size_of::<U>();
@@ -326,6 +397,12 @@ pub const fn cast_slice_mut<T: Layout<U>, U>(src: &mut [T]) -> &mut [U] {
             align_of::<T>() >= align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let len = size_of_val(src) / size_of::<U>();
@@ -344,7 +421,7 @@ mod tests {
         b: u32,
     }
 
-    unsafe impl crate::traits::Pod for ThePod {}
+    unsafe impl Pod for ThePod {}
 
     #[test]
     fn stack_misaligned_slice_from_bytes() {
