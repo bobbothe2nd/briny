@@ -1,7 +1,7 @@
 //! Casting primitive operations.
 
 use crate::{
-    BrinyError, raw::PodCell, traits::{CopySafe, ImplicitPod, Layout},
+    BrinyError, raw::PodCell, traits::{CopySafe, ImplicitPod, Layout, NoPadding},
 };
 use core::{
     ptr::{from_mut, from_ref, read_unaligned},
@@ -14,9 +14,9 @@ use core::{
 #[inline(always)]
 pub const fn reinterpret<T, U>(src: T) -> U
 where 
-    T: ImplicitPod,
-    U: ImplicitPod,
-    PodCell<T>: Layout<PodCell<U>>,
+    T: NoPadding,
+    U: NoPadding,
+    PodCell<PodCell<T>>: Layout<PodCell<U>>,
 {
     const {
         assert!(T::HAS_NO_PADDING && U::HAS_NO_PADDING, "cannot cast between types with padding");
@@ -304,9 +304,9 @@ pub const fn copy_from_bytes<T: ImplicitPod>(bytes: &[u8]) -> Result<T, BrinyErr
 #[inline(always)]
 pub const fn copy<T, U>(src: &T) -> U
 where 
-    T: ImplicitPod,
-    U: ImplicitPod,
-    PodCell<T>: CopySafe<PodCell<U>>,
+    T: NoPadding,
+    U: NoPadding,
+    PodCell<PodCell<T>>: CopySafe<PodCell<U>>,
 {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
@@ -335,9 +335,9 @@ where
 #[inline(always)]
 pub const fn cast<T, U>(src: &T) -> &U
 where 
-    T: ImplicitPod,
-    U: ImplicitPod,
-    PodCell<T>: Layout<PodCell<U>>,
+    T: NoPadding,
+    U: NoPadding,
+    PodCell<PodCell<T>>: Layout<PodCell<U>>,
 {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
@@ -366,9 +366,9 @@ where
 #[inline(always)]
 pub const fn cast_mut<T, U>(src: &mut T) -> &mut U
 where 
-    T: ImplicitPod,
-    U: ImplicitPod,
-    PodCell<T>: Layout<PodCell<U>>,
+    T: NoPadding,
+    U: NoPadding,
+    PodCell<PodCell<T>>: Layout<PodCell<U>>,
 {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
@@ -397,9 +397,9 @@ where
 #[inline]
 pub const fn cast_slice<T, U>(src: &[T]) -> &[U]
 where 
-    T: ImplicitPod,
-    U: ImplicitPod,
-    PodCell<T>: Layout<PodCell<U>>,
+    T: NoPadding,
+    U: NoPadding,
+    PodCell<PodCell<T>>: Layout<PodCell<U>>,
 {
     const {
         assert!(
@@ -428,9 +428,9 @@ where
 #[inline]
 pub const fn cast_slice_mut<T, U>(src: &mut [T]) -> &mut [U]
 where 
-    T: ImplicitPod,
-    U: ImplicitPod,
-    PodCell<T>: Layout<PodCell<U>>,
+    T: NoPadding,
+    U: NoPadding,
+    PodCell<PodCell<T>>: Layout<PodCell<U>>,
 {
     const {
         assert!(

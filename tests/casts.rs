@@ -1,4 +1,4 @@
-use briny::{raw::cast::{cast, copy, copy_from_bytes, from_bytes, to_bytes}, traits::Auto};
+use briny::{raw::cast::{cast, copy, copy_from_bytes, from_bytes, reinterpret, to_bytes}, traits::{Auto, Layout}};
 
 #[repr(packed)]
 #[derive(Auto, Copy, Clone, Debug, PartialEq)]
@@ -6,6 +6,15 @@ struct Pair {
     a: u32,
     b: u64,
 }
+
+#[repr(packed)]
+#[derive(Copy, Clone, Debug)]
+struct Pair2 {
+    _a: u32,
+    _b: u64,
+}
+
+unsafe impl Layout<Pair2> for Pair {}
 
 #[test]
 fn to_bytes_roundtrip_fuzz() {
@@ -103,4 +112,10 @@ fn roundtrip_cast_fuzz() {
         let b2 = copy::<A, B>(a);
         assert_eq!(b, b2, "roundtrip failed for value {v}");
     }
+}
+
+#[test]
+fn reinterpret_bool() {
+    let true_u8: u8 = reinterpret(true);
+    let false_u8: u8 = reinterpret(false);
 }

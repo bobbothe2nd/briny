@@ -15,7 +15,7 @@ use stable_auto::{auto_leaf, auto_trait};
 
 pub use stable_auto::Auto;
 
-use crate::raw::MaybeNull;
+use crate::raw::{MaybeNull, PodCell};
 
 macro_rules! for_pod_ty {
     ($nonnull:ident $macro:path) => {
@@ -44,7 +44,7 @@ macro_rules! for_pod_ty {
             [T: ImplicitPod] Cell<T>
             [T: ImplicitPod] UnsafeCell<T>
 
-            [T: 'static] PhantomData<T>
+            [T: ImplicitPod] PhantomData<T>
             [] PhantomPinned
 
             #[cfg(feature = "half")]
@@ -202,7 +202,7 @@ macro_rules! impl_pod {
 
 for_pod_ty!(AnyNonNull impl_pod);
 
-unsafe impl<T: ImplicitPod> ExplicitPod for crate::raw::PodCell<T> {}
+unsafe impl<T: ImplicitPod> ExplicitPod for PodCell<T> {}
 
 /// Marker trait used to determine what types are safe to cast.
 ///
@@ -216,7 +216,13 @@ unsafe impl<T: ImplicitPod> ExplicitPod for crate::raw::PodCell<T> {}
 /// reinterpreted as a `Self`. It is also completely unrelated to all other types.
 pub unsafe trait Layout<T: ?Sized> {}
 
-unsafe impl<T: ExplicitPod + ?Sized, U: ExplicitPod + ?Sized> Layout<U> for T {}
+unsafe impl<T: ExplicitPod, U: ImplicitPod> Layout<PodCell<U>> for PodCell<T> {}
+
+unsafe impl<T: ExplicitPod> Layout<T> for bool {}
+unsafe impl<T: ExplicitPod> Layout<T> for char {}
+
+unsafe impl<T: ExplicitPod> Layout<T> for PodCell<bool> {}
+unsafe impl<T: ExplicitPod> Layout<T> for PodCell<char> {}
 
 unsafe impl<T: AnyNonNull + ?Sized> Layout<NonZeroI128> for T {}
 unsafe impl<T: AnyNonNull + ?Sized> Layout<NonZeroU128> for T {}
