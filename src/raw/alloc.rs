@@ -6,7 +6,7 @@ use alloc::{boxed::Box, rc::Rc, sync::Arc, vec::Vec};
 
 use crate::{
     raw::cast::{slice_to_bytes, slice_to_bytes_mut},
-    traits::{Layout, Pod},
+    traits::{Layout, ImplicitPod},
 };
 
 /// Casts between two `Vec`s of different types.
@@ -113,7 +113,7 @@ pub fn cast_rc<T: Layout<U>, U>(input: Rc<T>) -> Rc<U> {
 /// Creates a zeroed `Arc<T>`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_arc<T: Pod>() -> Arc<T> {
+pub fn zeroed_arc<T: ImplicitPod>() -> Arc<T> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
     }
@@ -124,7 +124,7 @@ pub fn zeroed_arc<T: Pod>() -> Arc<T> {
 /// Creates a zeroed `Rc<T>`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_rc<T: Pod>() -> Rc<T> {
+pub fn zeroed_rc<T: ImplicitPod>() -> Rc<T> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
     }
@@ -135,7 +135,7 @@ pub fn zeroed_rc<T: Pod>() -> Rc<T> {
 /// Creates a zeroed `Box<T>`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_box<T: Pod>() -> Box<T> {
+pub fn zeroed_box<T: ImplicitPod>() -> Box<T> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
     }
@@ -146,7 +146,7 @@ pub fn zeroed_box<T: Pod>() -> Box<T> {
 /// Creates a zeroed `Arc<[T]>` of length `len`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_arc_slice<T: Pod>(len: usize) -> Arc<[T]> {
+pub fn zeroed_arc_slice<T: ImplicitPod>(len: usize) -> Arc<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
     }
@@ -157,7 +157,7 @@ pub fn zeroed_arc_slice<T: Pod>(len: usize) -> Arc<[T]> {
 /// Creates a zeroed `Rc<[T]>` of length `len`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_rc_slice<T: Pod>(len: usize) -> Rc<[T]> {
+pub fn zeroed_rc_slice<T: ImplicitPod>(len: usize) -> Rc<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
     }
@@ -168,7 +168,7 @@ pub fn zeroed_rc_slice<T: Pod>(len: usize) -> Rc<[T]> {
 /// Creates a zeroed `Box<[T]>` of length `len`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_box_slice<T: Pod>(len: usize) -> Box<[T]> {
+pub fn zeroed_box_slice<T: ImplicitPod>(len: usize) -> Box<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
     }
@@ -179,7 +179,7 @@ pub fn zeroed_box_slice<T: Pod>(len: usize) -> Box<[T]> {
 /// Creates a zeroed `Vec<T>` of length `len`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_vec<T: Pod>(len: usize) -> Vec<T> {
+pub fn zeroed_vec<T: ImplicitPod>(len: usize) -> Vec<T> {
     zeroed_box_slice(len).into_vec()
 }
 
@@ -257,10 +257,10 @@ pub fn slice_in_rc<T: Copy>(slice: &[T]) -> Rc<[T]> {
     }
 }
 
-/// Collects a slice of `Pod` types into a `Vec` of a different type
+/// Collects a slice of `ImplicitPod` types into a `Vec` of a different type
 #[must_use]
 #[inline(always)]
-pub fn collect_reinterpret<T: Pod, U: Pod>(src: &[T]) -> Vec<U> {
+pub fn collect_reinterpret<T: ImplicitPod, U: ImplicitPod>(src: &[T]) -> Vec<U> {
     const {
         assert!(
             size_of::<T>() != 0 && size_of::<U>() != 0,

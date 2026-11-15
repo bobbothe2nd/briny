@@ -18,12 +18,12 @@ repository = "https://github.com/bobbothe2nd/briny"
 readme = "README.md"
 
 [dependencies]
-stable_auto = { version = "0.3.0", default-features = false }
+stable_auto = { version = "0.4", path = "../stable_auto/crates/stable_auto", default-features = false }
 half = { version = "2", optional = true, default-features = false }
 stable_intr = { version = "0.1.2", optional = true, default-features = false }
 
 [features]
-default = ["half", "std", "stable_intr"]
+default = ["std"]
 
 # depends on alloc, still no_std
 alloc = ["stable_auto/alloc"]

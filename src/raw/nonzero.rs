@@ -1,5 +1,7 @@
 //! `Option` alternative that exploits zeroed bitpatterns for memory efficiency.
 
+use stable_auto::Auto;
+
 use crate::{private::Private, traits::NonNullable};
 use core::{
     mem::{ManuallyDrop, MaybeUninit},
@@ -9,7 +11,7 @@ use core::{
 // add : NoUninitPadding
 
 /// Thin wrapper over `T` that safely checks when it is initialized.
-#[derive(Debug)]
+#[derive(Auto, Debug)]
 pub struct MaybeNull<T: NonNullable + 'static> {
     inner: MaybeUninit<T>,
 }

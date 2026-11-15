@@ -1,8 +1,7 @@
 //! Casting primitive operations.
 
 use crate::{
-    traits::{CopySafe, Layout, Pod},
-    BrinyError,
+    BrinyError, raw::PodCell, traits::{CopySafe, ImplicitPod, Layout},
 };
 use core::{
     ptr::{from_mut, from_ref, read_unaligned},
@@ -13,8 +12,14 @@ use core::{
 ///
 /// This does NOT drop the value of `src`. Instead, it just reinterprets the bytes as type `U`.
 #[inline(always)]
-pub const fn reinterpret<T: Layout<U>, U>(src: T) -> U {
+pub const fn reinterpret<T, U>(src: T) -> U
+where 
+    T: ImplicitPod,
+    U: ImplicitPod,
+    PodCell<T>: Layout<PodCell<U>>,
+{
     const {
+        assert!(T::HAS_NO_PADDING && U::HAS_NO_PADDING, "cannot cast between types with padding");
         assert!(
             size_of::<T>() == size_of::<U>(),
             "cannot cast between types of different sizes"
@@ -24,6 +29,7 @@ pub const fn reinterpret<T: Layout<U>, U>(src: T) -> U {
             "original alignment must be at least as strict as cast"
         );
 
+        assert!(T::HAS_NO_PADDING && U::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -67,10 +73,11 @@ pub const unsafe fn reinterpret_unchecked<T, U>(src: T) -> U {
 
 /// Converts any slice to bytes.
 #[inline]
-pub const fn slice_to_bytes<T: Pod>(slice: &[T]) -> &[u8] {
+pub const fn slice_to_bytes<T: ImplicitPod>(slice: &[T]) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -84,10 +91,11 @@ pub const fn slice_to_bytes<T: Pod>(slice: &[T]) -> &[u8] {
 
 /// Converts any mutable slice to bytes.
 #[inline]
-pub const fn slice_to_bytes_mut<T: Pod>(slice: &mut [T]) -> &mut [u8] {
+pub const fn slice_to_bytes_mut<T: ImplicitPod>(slice: &mut [T]) -> &mut [u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -99,12 +107,13 @@ pub const fn slice_to_bytes_mut<T: Pod>(slice: &mut [T]) -> &mut [u8] {
     unsafe { slice::from_raw_parts_mut(ptr, len) }
 }
 
-/// Converts any reference to a `Pod` type to bytes.
+/// Converts any reference to a `ImplicitPod` type to bytes.
 #[inline(always)]
-pub const fn to_bytes<T: Pod>(src: &T) -> &[u8] {
+pub const fn to_bytes<T: ImplicitPod>(src: &T) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -114,12 +123,13 @@ pub const fn to_bytes<T: Pod>(src: &T) -> &[u8] {
     unsafe { slice::from_raw_parts(from_ref::<T>(src).cast::<u8>(), size_of::<T>()) }
 }
 
-/// Converts any mutable reference to a `Pod` type to bytes.
+/// Converts any mutable reference to a `ImplicitPod` type to bytes.
 #[inline(always)]
-pub const fn to_bytes_mut<T: Pod>(src: &mut T) -> &mut [u8] {
+pub const fn to_bytes_mut<T: ImplicitPod>(src: &mut T) -> &mut [u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -136,10 +146,11 @@ pub const fn to_bytes_mut<T: Pod>(src: &mut T) -> &mut [u8] {
 /// Instead of causing undefined behavior or panicking, this function returns an error
 /// when `bytes` is invalid (incorrect size or unaligned).
 #[inline]
-pub fn slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], BrinyError> {
+pub fn slice_from_bytes<T: ImplicitPod>(bytes: &[u8]) -> Result<&[T], BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -172,10 +183,11 @@ pub fn slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], BrinyError> {
 /// Instead of causing undefined behavior or panicking, this function returns an error
 /// when `bytes` is invalid (incorrect size or unaligned).
 #[inline]
-pub fn slice_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut [T], BrinyError> {
+pub fn slice_from_bytes_mut<T: ImplicitPod>(bytes: &mut [u8]) -> Result<&mut [T], BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -208,10 +220,11 @@ pub fn slice_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut [T], BrinyE
 /// Instead of causing undefined behavior or panicking, this function returns an error
 /// when `bytes` is invalid (incorrect size or unaligned).
 #[inline(always)]
-pub fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, BrinyError> {
+pub fn from_bytes<T: ImplicitPod>(bytes: &[u8]) -> Result<&T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -238,10 +251,11 @@ pub fn from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, BrinyError> {
 /// Instead of causing undefined behavior or panicking, this function returns an error
 /// when `bytes` is invalid (incorrect size or unaligned).
 #[inline(always)]
-pub fn from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut T, BrinyError> {
+pub fn from_bytes_mut<T: ImplicitPod>(bytes: &mut [u8]) -> Result<&mut T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -268,10 +282,11 @@ pub fn from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut T, BrinyError> {
 /// Instead of causing undefined behavior or panicking, this function returns an error
 /// when `bytes` is invalid (incorrect size or unaligned).
 #[inline(always)]
-pub const fn copy_from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
+pub const fn copy_from_bytes<T: ImplicitPod>(bytes: &[u8]) -> Result<T, BrinyError> {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
+        assert!(T::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -287,7 +302,12 @@ pub const fn copy_from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
 
 /// Copies `src` to a new location as a new type
 #[inline(always)]
-pub const fn copy<T: CopySafe<U>, U>(src: &T) -> U {
+pub const fn copy<T, U>(src: &T) -> U
+where 
+    T: ImplicitPod,
+    U: ImplicitPod,
+    PodCell<T>: CopySafe<PodCell<U>>,
+{
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -299,6 +319,7 @@ pub const fn copy<T: CopySafe<U>, U>(src: &T) -> U {
             "cannot cast unaligned types"
         );
 
+        assert!(T::HAS_NO_PADDING && U::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -312,7 +333,12 @@ pub const fn copy<T: CopySafe<U>, U>(src: &T) -> U {
 
 /// Casts between two references like raw pointers
 #[inline(always)]
-pub const fn cast<T: Layout<U>, U>(src: &T) -> &U {
+pub const fn cast<T, U>(src: &T) -> &U
+where 
+    T: ImplicitPod,
+    U: ImplicitPod,
+    PodCell<T>: Layout<PodCell<U>>,
+{
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -324,6 +350,7 @@ pub const fn cast<T: Layout<U>, U>(src: &T) -> &U {
             "cannot cast unaligned types"
         );
 
+        assert!(T::HAS_NO_PADDING && U::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -337,7 +364,12 @@ pub const fn cast<T: Layout<U>, U>(src: &T) -> &U {
 
 /// Casts between two mutable references like raw pointers
 #[inline(always)]
-pub const fn cast_mut<T: Layout<U>, U>(src: &mut T) -> &mut U {
+pub const fn cast_mut<T, U>(src: &mut T) -> &mut U
+where 
+    T: ImplicitPod,
+    U: ImplicitPod,
+    PodCell<T>: Layout<PodCell<U>>,
+{
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
@@ -349,6 +381,7 @@ pub const fn cast_mut<T: Layout<U>, U>(src: &mut T) -> &mut U {
             "cannot cast unaligned types"
         );
 
+        assert!(T::HAS_NO_PADDING && U::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -362,7 +395,12 @@ pub const fn cast_mut<T: Layout<U>, U>(src: &mut T) -> &mut U {
 
 /// Casts between two immutable slices of different types.
 #[inline]
-pub const fn cast_slice<T: Layout<U>, U>(src: &[T]) -> &[U] {
+pub const fn cast_slice<T, U>(src: &[T]) -> &[U]
+where 
+    T: ImplicitPod,
+    U: ImplicitPod,
+    PodCell<T>: Layout<PodCell<U>>,
+{
     const {
         assert!(
             size_of::<T>() > 0 && size_of::<U>() > 0,
@@ -373,6 +411,7 @@ pub const fn cast_slice<T: Layout<U>, U>(src: &[T]) -> &[U] {
             "original alignment must be at least as strict as cast"
         );
 
+        assert!(T::HAS_NO_PADDING && U::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -387,7 +426,12 @@ pub const fn cast_slice<T: Layout<U>, U>(src: &[T]) -> &[U] {
 
 /// Casts between two mutable slices of different types.
 #[inline]
-pub const fn cast_slice_mut<T: Layout<U>, U>(src: &mut [T]) -> &mut [U] {
+pub const fn cast_slice_mut<T, U>(src: &mut [T]) -> &mut [U]
+where 
+    T: ImplicitPod,
+    U: ImplicitPod,
+    PodCell<T>: Layout<PodCell<U>>,
+{
     const {
         assert!(
             size_of::<T>() > 0 && size_of::<U>() > 0,
@@ -398,6 +442,7 @@ pub const fn cast_slice_mut<T: Layout<U>, U>(src: &mut [T]) -> &mut [U] {
             "original alignment must be at least as strict as cast"
         );
 
+        assert!(T::HAS_NO_PADDING && U::HAS_NO_PADDING, "cannot cast between types with padding");
         #[cfg(feature = "stable_intr")]
         {
             stable_intr::assert_inhabited::<T>();
@@ -412,16 +457,16 @@ pub const fn cast_slice_mut<T: Layout<U>, U>(src: &mut [T]) -> &mut [U] {
 
 #[cfg(test)]
 mod tests {
+    use stable_auto::Auto;
+
     use super::*;
 
     #[repr(C, align(8))]
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Auto, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
     struct ThePod {
         a: u32,
         b: u32,
     }
-
-    unsafe impl Pod for ThePod {}
 
     #[test]
     fn stack_misaligned_slice_from_bytes() {

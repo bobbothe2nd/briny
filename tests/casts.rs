@@ -1,19 +1,14 @@
-use briny::{
-    raw::cast::{cast, copy, copy_from_bytes, from_bytes, to_bytes},
-    traits::Pod,
-};
+use briny::{raw::cast::{cast, copy, copy_from_bytes, from_bytes, to_bytes}, traits::Auto};
+
+#[repr(packed)]
+#[derive(Auto, Copy, Clone, Debug, PartialEq)]
+struct Pair {
+    a: u32,
+    b: u64,
+}
 
 #[test]
 fn to_bytes_roundtrip_fuzz() {
-    #[repr(packed)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
-    struct Pair {
-        a: u32,
-        b: u64,
-    }
-
-    unsafe impl Pod for Pair {}
-
     let inputs: &[Pair] = &[
         Pair { a: 0, b: 0 },
         Pair {
@@ -40,15 +35,6 @@ fn to_bytes_roundtrip_fuzz() {
 
 #[test]
 fn copy_bytes_roundtrip_fuzz() {
-    #[repr(packed)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
-    struct Pair {
-        a: u32,
-        b: u64,
-    }
-
-    unsafe impl Pod for Pair {}
-
     let inputs: &[Pair] = &[
         Pair { a: 0, b: 0 },
         Pair {
@@ -76,20 +62,13 @@ fn copy_bytes_roundtrip_fuzz() {
 #[test]
 fn cast_struct_edge_fuzz() {
     #[repr(C, align(4))]
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+    #[derive(Auto, Copy, Clone, Debug, PartialEq, Eq, Default)]
     struct FourBytes {
         a: u8,
         b: u8,
         c: u8,
         d: u8,
     }
-
-    unsafe impl Pod for FourBytes {}
-
-    const _: () = {
-        assert!(size_of::<FourBytes>() == size_of::<u32>());
-        assert!(align_of::<FourBytes>() == align_of::<u32>());
-    };
 
     for a in 0u8..=10 {
         for b in 0u8..=10 {
@@ -108,24 +87,15 @@ fn cast_struct_edge_fuzz() {
 #[test]
 fn roundtrip_cast_fuzz() {
     #[repr(C, align(4))]
-    #[derive(Copy, Clone, Debug, PartialEq, Default)]
+    #[derive(Auto, Copy, Clone, Debug, PartialEq, Default)]
     struct A {
         x: u16,
         y: u16,
     }
 
-    unsafe impl Pod for A {}
-
     #[repr(C, align(4))]
-    #[derive(Copy, Clone, Debug, PartialEq, Default)]
+    #[derive(Auto, Copy, Clone, Debug, PartialEq, Default)]
     struct B(u32);
-
-    unsafe impl Pod for B {}
-
-    const _: () = {
-        assert!(size_of::<A>() == size_of::<B>());
-        assert!(align_of::<A>() >= align_of::<B>());
-    };
 
     for v in 0u32..100 {
         let b = B(v);

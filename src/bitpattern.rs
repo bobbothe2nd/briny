@@ -2,7 +2,7 @@
 
 use crate::{
     private::Private,
-    traits::{InvalidPattern, Layout, NonNullable},
+    traits::{InvalidPattern, Layout},
 };
 
 /// Compatible with `match_null`:
@@ -102,8 +102,11 @@ macro_rules! impl_other {
         #[repr(transparent)]
         pub struct $name<const INVALID: $valid>(pub(super) $valid);
 
-        unsafe impl NonNullable for $name<0> {}
+        // unsafe impl NonNullable for $name<0> {}
         unsafe impl<const INVALID: $valid> Layout<$name<INVALID>> for $valid {}
+        unsafe impl<const INVALID: $valid> stable_auto::Auto for $name<INVALID> {
+            type Fields = stable_auto::AllImpl<Self>;
+        }
 
         unsafe impl<const INVALID: $valid> InvalidPattern for $name<INVALID> {
             type Valid = $valid;

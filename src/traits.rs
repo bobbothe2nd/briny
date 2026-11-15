@@ -2,7 +2,7 @@
 
 use core::{
     cell::{Cell, UnsafeCell},
-    marker::PhantomData,
+    marker::{PhantomData, PhantomPinned},
     mem::{ManuallyDrop, MaybeUninit},
     num::{
         NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
@@ -11,7 +11,97 @@ use core::{
     ptr::NonNull,
 };
 
+use stable_auto::{auto_leaf, auto_trait};
+
+pub use stable_auto::Auto;
+
 use crate::raw::MaybeNull;
+
+macro_rules! for_pod_ty {
+    ($nonnull:ident $macro:path) => {
+        $macro! {
+            [] ()
+            [] usize
+            [] u8
+            [] u16
+            [] u32
+            [] u64
+            [] u128
+            [] isize
+            [] i8
+            [] i16
+            [] i32
+            [] i64
+            [] i128
+            [] f32
+            [] f64
+            [T: ImplicitPod, const N: usize] [T; N]
+            [T: ImplicitPod] ManuallyDrop<T>
+            [T: ImplicitPod] Wrapping<T>
+            [T: ImplicitPod] Saturating<T>
+            [T: $nonnull] Option<T>
+            [T: $nonnull] MaybeNull<T>
+            [T: ImplicitPod] Cell<T>
+            [T: ImplicitPod] UnsafeCell<T>
+
+            [T: 'static] PhantomData<T>
+            [] PhantomPinned
+
+            #[cfg(feature = "half")]
+            [] half::f16
+            #[cfg(feature = "half")]
+            [] half::bf16
+
+            #[cfg(feature = "nightly_float")]
+            [] f16
+            #[cfg(feature = "nightly_float")]
+            [] f128
+
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m128
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m128bh
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m128d
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m128i
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m256
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m256bh
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m256d
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m256i
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m512
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m512bh
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m512d
+            #[cfg(target_arch = "x86_64")]
+            [] core::arch::x86_64::__m512i
+        }
+    };
+}
+
+/// Marker trait for types which can be safely zeroed.
+#[auto_trait]
+pub unsafe trait Zeroable: NoPadding {}
+
+macro_rules! impl_zero {
+    ($($(#[$attr:meta])*[$($generics:tt)*]$ty:ty)*) => {
+        auto_leaf! {
+            $(
+                $(#[$attr])*
+                unsafe impl<$($generics)*> Zeroable for $ty {}
+            )*
+        }
+    };
+}
+
+for_pod_ty!(CompilerAssumedNonNullable impl_zero);
+impl_zero!([T] MaybeUninit<T>);
 
 /// Marker trait for types subject to the null pointer optimization.
 ///
@@ -19,18 +109,21 @@ use crate::raw::MaybeNull;
 ///
 /// If zeroed is a valid bitpattern, undefined behavior will occur
 /// when trying to optimize memory.
-pub unsafe trait NonNullable {}
+#[auto_trait]
+pub unsafe trait NonNullable: NoPadding {}
 
-unsafe impl<T: CompilerAssumedNonNullable + ?Sized> NonNullable for T {}
+auto_leaf! {
+    unsafe impl<T: CompilerAssumedNonNullable + ?Sized> NonNullable for T {}
+}
 
 /// Marker trait for types subject to the null pointer optimization by the compiler.
 ///
 /// # Safety
 ///
 /// If the compiler can safely assume the type can't represent a zeroed bitpattern,
-/// this is safe. It isn't safe to implement on `Pod` types. The type must have valid
+/// this is safe. It isn't safe to implement on `ImplicitPod` types. The type must have valid
 /// bitpatterns for every other type.
-pub unsafe trait CompilerAssumedNonNullable: NonNullable {}
+pub unsafe trait CompilerAssumedNonNullable: NonNullable + NoPadding {}
 
 unsafe impl CompilerAssumedNonNullable for NonZeroU8 {}
 unsafe impl CompilerAssumedNonNullable for NonZeroI8 {}
@@ -53,20 +146,23 @@ unsafe impl<T> CompilerAssumedNonNullable for &mut T {}
 /// # Safety
 ///
 /// If other bitpatterns are invalid, implementing this trait is unsound.
+#[auto_trait]
 pub unsafe trait AnyNonNull: CompilerAssumedNonNullable + 'static {}
 
-unsafe impl AnyNonNull for NonZeroU8 {}
-unsafe impl AnyNonNull for NonZeroI8 {}
-unsafe impl AnyNonNull for NonZeroU16 {}
-unsafe impl AnyNonNull for NonZeroI16 {}
-unsafe impl AnyNonNull for NonZeroU32 {}
-unsafe impl AnyNonNull for NonZeroI32 {}
-unsafe impl AnyNonNull for NonZeroU64 {}
-unsafe impl AnyNonNull for NonZeroI64 {}
-unsafe impl AnyNonNull for NonZeroU128 {}
-unsafe impl AnyNonNull for NonZeroI128 {}
-unsafe impl AnyNonNull for NonZeroUsize {}
-unsafe impl AnyNonNull for NonZeroIsize {}
+auto_leaf! {
+    unsafe impl AnyNonNull for NonZeroU8 {}
+    unsafe impl AnyNonNull for NonZeroI8 {}
+    unsafe impl AnyNonNull for NonZeroU16 {}
+    unsafe impl AnyNonNull for NonZeroI16 {}
+    unsafe impl AnyNonNull for NonZeroU32 {}
+    unsafe impl AnyNonNull for NonZeroI32 {}
+    unsafe impl AnyNonNull for NonZeroU64 {}
+    unsafe impl AnyNonNull for NonZeroI64 {}
+    unsafe impl AnyNonNull for NonZeroU128 {}
+    unsafe impl AnyNonNull for NonZeroI128 {}
+    unsafe impl AnyNonNull for NonZeroUsize {}
+    unsafe impl AnyNonNull for NonZeroIsize {}
+}
 
 /// POD marker trait for *Plain Old Data*.
 ///
@@ -77,74 +173,41 @@ unsafe impl AnyNonNull for NonZeroIsize {}
 /// - `T` must implement [`StableLayout`] + [`RawConvert`]
 ///
 /// Violating any of these constraints is bound to cause undefined behavior.
-pub unsafe trait Pod: 'static {}
+#[auto_trait]
+pub unsafe trait ImplicitPod: NoPadding + 'static {}
 
-unsafe impl Pod for () {}
-unsafe impl Pod for usize {}
-unsafe impl Pod for u8 {}
-unsafe impl Pod for u16 {}
-unsafe impl Pod for u32 {}
-unsafe impl Pod for u64 {}
-unsafe impl Pod for u128 {}
-unsafe impl Pod for isize {}
-unsafe impl Pod for i8 {}
-unsafe impl Pod for i16 {}
-unsafe impl Pod for i32 {}
-unsafe impl Pod for i64 {}
-unsafe impl Pod for i128 {}
-unsafe impl Pod for f32 {}
-unsafe impl Pod for f64 {}
-unsafe impl<T: Pod, const N: usize> Pod for [T; N] {}
-unsafe impl<T: Pod + ?Sized> Pod for ManuallyDrop<T> {}
-unsafe impl<T: Pod> Pod for Wrapping<T> {}
-unsafe impl<T: Pod> Pod for Saturating<T> {}
-unsafe impl<T: CompilerAssumedNonNullable + AnyNonNull> Pod for Option<T> {}
-unsafe impl<T: NonNullable + 'static> Pod for MaybeNull<T> {}
-unsafe impl<T: Pod + ?Sized> Pod for Cell<T> {}
-unsafe impl<T: Pod + ?Sized> Pod for UnsafeCell<T> {}
+auto_leaf! {
+    unsafe impl<T: ExplicitPod> ImplicitPod for T {}
+}
 
-unsafe impl<T: 'static> Pod for PhantomData<T> {}
-// unsafe impl<T: 'static> Pod for MaybeUninit<T> {}
+/// POD marker trait for *Plain Old Data*.
+///
+/// # Safety
+///
+/// - All bit patterns of `T` must be valid
+/// - `T` must have no padding or initialized padding
+/// - `T` must implement [`StableLayout`] + [`RawConvert`]
+///
+/// Violating any of these constraints is bound to cause undefined behavior.
+pub unsafe trait ExplicitPod: NoPadding + 'static {}
 
-#[cfg(feature = "half")]
-unsafe impl Pod for half::f16 {}
-#[cfg(feature = "half")]
-unsafe impl Pod for half::bf16 {}
+macro_rules! impl_pod {
+    ($($(#[$attr:meta])*[$($generics:tt)*]$ty:ty)*) => {
+        $(
+            $(#[$attr])*
+            unsafe impl<$($generics)*> ExplicitPod for $ty {}
+        )*
+    };
+}
 
-#[cfg(feature = "nightly_float")]
-unsafe impl Pod for f16 {}
-#[cfg(feature = "nightly_float")]
-unsafe impl Pod for f128 {}
+for_pod_ty!(AnyNonNull impl_pod);
 
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m128 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m128bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m128d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m128i {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m256 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m256bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m256d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m256i {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m512 {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m512bh {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m512d {}
-#[cfg(target_arch = "x86_64")]
-unsafe impl Pod for core::arch::x86_64::__m512i {}
+unsafe impl<T: ImplicitPod> ExplicitPod for crate::raw::PodCell<T> {}
 
 /// Marker trait used to determine what types are safe to cast.
 ///
 /// If a type is safe to cast to another type, but not any type, this should be used
-/// instead of [`Pod`].
+/// instead of [`ImplicitPod`].
 ///
 /// # Safety
 ///
@@ -153,12 +216,9 @@ unsafe impl Pod for core::arch::x86_64::__m512i {}
 /// reinterpreted as a `Self`. It is also completely unrelated to all other types.
 pub unsafe trait Layout<T: ?Sized> {}
 
-unsafe impl<T: Pod + ?Sized, U: Pod + ?Sized> Layout<U> for T {}
+unsafe impl<T: ExplicitPod + ?Sized, U: ExplicitPod + ?Sized> Layout<U> for T {}
 
-unsafe impl<T: AnyNonNull + ?Sized> Layout<bool> for T {}
-unsafe impl<T: AnyNonNull + ?Sized> Layout<char> for T {}
-
-unsafe impl<T: Pod + ?Sized> Layout<NonZeroI128> for T {}
+unsafe impl<T: AnyNonNull + ?Sized> Layout<NonZeroI128> for T {}
 unsafe impl<T: AnyNonNull + ?Sized> Layout<NonZeroU128> for T {}
 
 unsafe impl<T: AnyNonNull + ?Sized> Layout<NonZeroI64> for T {}
@@ -176,23 +236,23 @@ unsafe impl<T: AnyNonNull + ?Sized> Layout<NonZeroU8> for T {}
 unsafe impl<T: AnyNonNull + ?Sized> Layout<NonZeroUsize> for T {}
 unsafe impl<T: AnyNonNull + ?Sized> Layout<NonZeroIsize> for T {}
 
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroU128 {}
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroI128 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroU128 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroI128 {}
 
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroU64 {}
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroI64 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroU64 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroI64 {}
 
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroU32 {}
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroI32 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroU32 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroI32 {}
 
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroU16 {}
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroI16 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroU16 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroI16 {}
 
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroU8 {}
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroI8 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroU8 {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroI8 {}
 
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroUsize {}
-unsafe impl<T: Pod + ?Sized> Layout<T> for NonZeroIsize {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroUsize {}
+unsafe impl<T: ExplicitPod + ?Sized> Layout<T> for NonZeroIsize {}
 
 unsafe impl<T: AnyNonNull, U> Layout<NonNull<U>> for T {}
 
@@ -202,13 +262,27 @@ unsafe impl<T, U> Layout<MaybeUninit<T>> for U {}
 ///
 /// # Safety
 ///
-/// Slightly stricter than [`Layout`] and different from [`Pod`], it is safe to implement this trait on any type
+/// Slightly stricter than [`Layout`] and different from [`ImplicitPod`], it is safe to implement this trait on any type
 /// that is safe to copy into a type of `T`.
 ///
-/// This is always safe where `Self: Copy + Layout<T>, T: Copy`.
+/// This is always safe where `Self: Layout<T>, T: Copy`.
 pub unsafe trait CopySafe<T>: Layout<T> {}
 
-unsafe impl<T: Layout<U> + Copy, U: Copy> CopySafe<U> for T {}
+unsafe impl<T: Layout<U>, U: Copy> CopySafe<U> for T {}
+
+/// Marker trait for types with no uninitialized padding bytes.
+pub unsafe trait NoPadding {
+    #[doc(hidden)]
+    const HAS_NO_PADDING: bool;
+}
+
+unsafe impl<T> NoPadding for T
+where 
+    T: Auto,
+    T::Fields: Sized,
+{
+    const HAS_NO_PADDING: bool = size_of::<T::Fields>() == size_of::<T>();
+}
 
 /// Every bitpattern must be valid except the one pattern `check_valid` checks for.
 ///
