@@ -48,7 +48,7 @@ pub const unsafe fn reinterpret_unchecked<T, U>(src: T) -> U {
         stable_intr::transmute_unchecked(src)
     }
 
-    #[cfg(not(any(feature = "stable_intr", feature = "nightly_intr")))]
+    #[cfg(not(feature = "stable_intr"))]
     {
         use core::mem::ManuallyDrop;
 

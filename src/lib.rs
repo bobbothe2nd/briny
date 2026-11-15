@@ -1,7 +1,6 @@
 //! Functions, traits, methods, and types to improve memory integrity.
 
-#![cfg_attr(feature = "nightly_float", feature(f16))]
-#![cfg_attr(feature = "nightly_float", feature(f128))]
+#![cfg_attr(feature = "nightly_float", feature(f16, f128))]
 
 #![forbid(missing_docs)]
 #![forbid(unused_must_use)]
