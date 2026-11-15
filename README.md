@@ -80,24 +80,24 @@ The new system of using `stable_auto` causes some very confusing errors to arise
 
 ```text
 error[E0277]: the trait bound `bool: traits::__auto_Pod_inner` is not satisfied
-   --> tests\casts.rs:122:37
+   --> src\lib.rs:189:35
     |
-122 |     let true_u8: bool = reinterpret(1);
-    |                         ----------- ^ the trait `traits::__auto_Pod_inner` is not implemented for `bool`
-    |                         |
-    |                         required by a bound introduced by this call
+189 | let true_bool: bool = reinterpret(1);
+    |                       ----------- ^ the trait `traits::__auto_Pod_inner` is not implemented for `bool`
+    |                       |
+    |                       required by a bound introduced by this call
     |
     = help: the following other types implement trait `traits::__auto_Pod_inner`:
               ()
-              AllImpl<T>
               Cell<T>
-              Combined<A, B>
-              Leaf<T>
               ManuallyDrop<T>
               MaybeNull<T>
               Option<T>
+              PhantomData<T>
+              PhantomPinned
+              Saturating<T>
             and 32 others
-    = note: required for `AllImpl<bool>` to implement `traits::__auto_Pod_inner`
+    = note: required for `stable_auto::AllImpl<bool>` to implement `traits::__auto_Pod_inner`
     = note: required for `bool` to implement `traits::__auto_Pod_recursive`
     = note: required for `bool` to implement `Pod`
     = note: required for `{integer}` to implement `briny::traits::Layout<bool>`
@@ -111,6 +111,14 @@ note: required by a bound in `reinterpret`
 ```
 
 This just means you tried to cast `i32` to `bool`. This is invalid, and so it gets rejected.
+
+You can see the code that caused this error here:
+
+```compile_fail
+use briny::raw::cast::reinterpret;
+let true_bool: bool = reinterpret(1);
+assert!(true_bool);
+```
 
 ## Contributing
 
