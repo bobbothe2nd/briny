@@ -1,4 +1,6 @@
-use briny::{raw::cast::{cast, copy, copy_from_bytes, from_bytes, reinterpret, to_bytes}, traits::{Auto, Layout}};
+use briny::{
+    raw::cast::{cast, copy, copy_from_bytes, from_bytes, reinterpret, to_bytes}, traits::{Auto, Layout, ReprSafe},
+};
 
 #[repr(packed)]
 #[derive(Auto, Copy, Clone, Debug, PartialEq)]
@@ -14,6 +16,7 @@ struct Pair2 {
     _b: u64,
 }
 
+unsafe impl ReprSafe for Pair2 {}
 unsafe impl Layout<Pair2> for Pair {}
 
 #[test]
@@ -115,7 +118,8 @@ fn roundtrip_cast_fuzz() {
 }
 
 #[test]
-fn reinterpret_bool() {
+fn bool_bitpatterns() {
     let true_u8: u8 = reinterpret(true);
     let false_u8: u8 = reinterpret(false);
+    assert!(true_u8 == 1 && false_u8 == 0);
 }

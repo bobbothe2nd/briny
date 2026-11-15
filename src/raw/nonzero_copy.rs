@@ -1,17 +1,17 @@
-use crate::{private::Private, traits::NonNullable};
+use crate::{private::Private, traits::{NonNullable, ReprSafe}};
 use core::{mem::MaybeUninit, ptr::write_bytes};
 
 // add : NoUninitPadding
 
 /// Thin wrapper over `T` that safely checks when it is initialized that implements copy.
 #[derive(Debug, Clone, Copy)]
-pub struct MaybeNullCopy<T: NonNullable + Copy + 'static> {
+pub struct MaybeNullCopy<T: NonNullable + Copy + ReprSafe> {
     inner: MaybeUninit<T>,
 }
 
-impl<T: NonNullable + Copy> Private for MaybeNullCopy<T> {}
+impl<T: NonNullable + Copy + ReprSafe> Private for MaybeNullCopy<T> {}
 
-impl<T: NonNullable + Copy> MaybeNullCopy<T> {
+impl<T: NonNullable + Copy + ReprSafe> MaybeNullCopy<T> {
     /// Creates a zeroed bitpattern the size of a value.
     #[inline(always)]
     #[must_use]

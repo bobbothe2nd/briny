@@ -1,18 +1,19 @@
 //! Cast allocations and efficiently zero them.
 
-use core::{mem::forget, ptr::copy_nonoverlapping};
+use core::mem::forget;
 
 use alloc::{boxed::Box, rc::Rc, sync::Arc, vec::Vec};
 
-use crate::{
-    raw::cast::{slice_to_bytes, slice_to_bytes_mut},
-    traits::{Layout, ImplicitPod},
-};
+use crate::{raw::cast::cast_slice, traits::{Layout, NoPadding, Pod, ReprSafe, Zeroable}};
 
 /// Casts between two `Vec`s of different types.
 #[must_use]
 #[inline(always)]
-pub fn cast_vec<T: Layout<U>, U>(mut input: Vec<T>) -> Vec<U> {
+pub fn cast_vec<T, U>(mut input: Vec<T>) -> Vec<U>
+where
+    T: NoPadding + Layout<U>,
+    U: NoPadding + ReprSafe,
+{
     const {
         assert!(
             size_of::<T>() != 0 && size_of::<U>() != 0,
@@ -22,6 +23,16 @@ pub fn cast_vec<T: Layout<U>, U>(mut input: Vec<T>) -> Vec<U> {
             align_of::<T>() == align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
+
+        assert!(
+            T::HAS_NO_PADDING && U::HAS_NO_PADDING,
+            "cannot cast between types with padding"
+        );
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let src_size = size_of_val(input.as_slice());
@@ -44,7 +55,11 @@ pub fn cast_vec<T: Layout<U>, U>(mut input: Vec<T>) -> Vec<U> {
 /// Casts between two [`Box`] pointers
 #[must_use]
 #[inline(always)]
-pub fn cast_box<T: Layout<U>, U>(input: Box<T>) -> Box<U> {
+pub fn cast_box<T, U>(input: Box<T>) -> Box<U>
+where
+    T: NoPadding + Layout<U>,
+    U: NoPadding + ReprSafe,
+{
     const {
         assert!(size_of::<T>() != 0, "cannot cast between ZSTs");
         assert!(
@@ -65,7 +80,11 @@ pub fn cast_box<T: Layout<U>, U>(input: Box<T>) -> Box<U> {
 /// Casts between [`Arc`] pointers
 #[must_use]
 #[inline(always)]
-pub fn cast_arc<T: Layout<U>, U>(input: Arc<T>) -> Arc<U> {
+pub fn cast_arc<T, U>(input: Arc<T>) -> Arc<U>
+where
+    T: NoPadding + Layout<U>,
+    U: NoPadding + ReprSafe,
+{
     const {
         assert!(
             size_of::<T>() != 0 && size_of::<U>() != 0,
@@ -79,6 +98,16 @@ pub fn cast_arc<T: Layout<U>, U>(input: Arc<T>) -> Arc<U> {
             align_of::<T>() == align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
+
+        assert!(
+            T::HAS_NO_PADDING && U::HAS_NO_PADDING,
+            "cannot cast between types with padding"
+        );
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let ptr = Arc::into_raw(input).cast();
@@ -89,7 +118,11 @@ pub fn cast_arc<T: Layout<U>, U>(input: Arc<T>) -> Arc<U> {
 /// Casts between [`Rc`] pointers
 #[must_use]
 #[inline(always)]
-pub fn cast_rc<T: Layout<U>, U>(input: Rc<T>) -> Rc<U> {
+pub fn cast_rc<T, U>(input: Rc<T>) -> Rc<U>
+where
+    T: NoPadding + Layout<U>,
+    U: NoPadding + ReprSafe,
+{
     const {
         assert!(
             size_of::<T>() != 0 && size_of::<U>() != 0,
@@ -103,6 +136,16 @@ pub fn cast_rc<T: Layout<U>, U>(input: Rc<T>) -> Rc<U> {
             align_of::<T>() == align_of::<U>(),
             "original alignment must be at least as strict as cast"
         );
+
+        assert!(
+            T::HAS_NO_PADDING && U::HAS_NO_PADDING,
+            "cannot cast between types with padding"
+        );
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let ptr = Rc::into_raw(input).cast();
@@ -113,9 +156,14 @@ pub fn cast_rc<T: Layout<U>, U>(input: Rc<T>) -> Rc<U> {
 /// Creates a zeroed `Arc<T>`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_arc<T: ImplicitPod>() -> Arc<T> {
+pub fn zeroed_arc<T: Zeroable>() -> Arc<T> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     unsafe { Arc::new_zeroed().assume_init() }
@@ -124,9 +172,14 @@ pub fn zeroed_arc<T: ImplicitPod>() -> Arc<T> {
 /// Creates a zeroed `Rc<T>`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_rc<T: ImplicitPod>() -> Rc<T> {
+pub fn zeroed_rc<T: Zeroable>() -> Rc<T> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     unsafe { Rc::new_zeroed().assume_init() }
@@ -135,9 +188,14 @@ pub fn zeroed_rc<T: ImplicitPod>() -> Rc<T> {
 /// Creates a zeroed `Box<T>`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_box<T: ImplicitPod>() -> Box<T> {
+pub fn zeroed_box<T: Zeroable>() -> Box<T> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     unsafe { Box::new_zeroed().assume_init() }
@@ -146,9 +204,14 @@ pub fn zeroed_box<T: ImplicitPod>() -> Box<T> {
 /// Creates a zeroed `Arc<[T]>` of length `len`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_arc_slice<T: ImplicitPod>(len: usize) -> Arc<[T]> {
+pub fn zeroed_arc_slice<T: Zeroable>(len: usize) -> Arc<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     unsafe { Arc::new_zeroed_slice(len).assume_init() }
@@ -157,9 +220,14 @@ pub fn zeroed_arc_slice<T: ImplicitPod>(len: usize) -> Arc<[T]> {
 /// Creates a zeroed `Rc<[T]>` of length `len`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_rc_slice<T: ImplicitPod>(len: usize) -> Rc<[T]> {
+pub fn zeroed_rc_slice<T: Zeroable>(len: usize) -> Rc<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     unsafe { Rc::new_zeroed_slice(len).assume_init() }
@@ -168,9 +236,14 @@ pub fn zeroed_rc_slice<T: ImplicitPod>(len: usize) -> Rc<[T]> {
 /// Creates a zeroed `Box<[T]>` of length `len`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_box_slice<T: ImplicitPod>(len: usize) -> Box<[T]> {
+pub fn zeroed_box_slice<T: Zeroable>(len: usize) -> Box<[T]> {
     const {
         assert!(size_of::<T>() != 0, "cannot copy ZSTs");
+
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+        }
     }
 
     unsafe { Box::new_zeroed_slice(len).assume_init() }
@@ -179,104 +252,40 @@ pub fn zeroed_box_slice<T: ImplicitPod>(len: usize) -> Box<[T]> {
 /// Creates a zeroed `Vec<T>` of length `len`
 #[must_use]
 #[inline(always)]
-pub fn zeroed_vec<T: ImplicitPod>(len: usize) -> Vec<T> {
+pub fn zeroed_vec<T: Zeroable>(len: usize) -> Vec<T> {
     zeroed_box_slice(len).into_vec()
 }
 
-/// Creates a `Box<[T]>` with the contents copied from `slice`
+/// Collects a slice of `Pod` types into a boxed slice of a different type
 #[must_use]
 #[inline(always)]
-#[deprecated = "use Box::from"]
-pub fn slice_in_box<T: Copy>(slice: &[T]) -> Box<[T]> {
-    const {
-        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
-    }
-
-    let len = slice.len();
-
-    let mut boxed = Box::new_uninit_slice(len);
-
-    unsafe {
-        copy_nonoverlapping(slice.as_ptr(), boxed.as_mut_ptr().cast(), len);
-
-        boxed.assume_init()
-    }
-}
-
-/// Creates a `Arc<[T]>` with the contents copied from `slice`
-#[must_use]
-#[inline(always)]
-#[deprecated = "use Arc::from"]
-pub fn slice_in_arc<T: Copy>(slice: &[T]) -> Arc<[T]> {
-    const {
-        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
-    }
-
-    let len = slice.len();
-
-    let mut boxed = Arc::new_uninit_slice(len);
-
-    unsafe {
-        copy_nonoverlapping(
-            slice.as_ptr(),
-            Arc::get_mut(&mut boxed)
-                .unwrap_unchecked()
-                .as_mut_ptr()
-                .cast(),
-            len,
-        );
-
-        boxed.assume_init()
-    }
-}
-
-/// Creates a `Rc<[T]>` with the contents copied from `slice`
-#[must_use]
-#[inline(always)]
-#[deprecated = "use Rc::from"]
-pub fn slice_in_rc<T: Copy>(slice: &[T]) -> Rc<[T]> {
-    const {
-        assert!(size_of::<T>() != 0, "cannot copy ZSTs");
-    }
-
-    let len = slice.len();
-
-    let mut boxed = Rc::new_uninit_slice(len);
-
-    unsafe {
-        copy_nonoverlapping(
-            slice.as_ptr(),
-            Rc::get_mut(&mut boxed)
-                .unwrap_unchecked()
-                .as_mut_ptr()
-                .cast(),
-            len,
-        );
-
-        boxed.assume_init()
-    }
-}
-
-/// Collects a slice of `ImplicitPod` types into a `Vec` of a different type
-#[must_use]
-#[inline(always)]
-pub fn collect_reinterpret<T: ImplicitPod, U: ImplicitPod>(src: &[T]) -> Vec<U> {
+pub fn collect_reinterpret<T: Pod, U: Pod + Copy>(src: &[T]) -> Box<[U]> {
     const {
         assert!(
             size_of::<T>() != 0 && size_of::<U>() != 0,
             "cannot cast between ZSTs"
         );
+
+        assert!(
+            T::HAS_NO_PADDING && U::HAS_NO_PADDING,
+            "cannot cast between types with padding"
+        );
+        #[cfg(feature = "stable_intr")]
+        {
+            stable_intr::assert_inhabited::<T>();
+            stable_intr::assert_inhabited::<U>();
+        }
     }
 
     let src_size = size_of_val(src);
     let dst_count = src_size.div_ceil(size_of::<U>());
 
-    let mut dst: Vec<U> = zeroed_vec(dst_count);
+    let mut dst = Box::<[U]>::new_uninit_slice(dst_count);
 
-    let src_bytes = slice_to_bytes(src);
-    let dst_bytes = slice_to_bytes_mut(&mut dst[..]);
+    unsafe {
+        dst[dst.len() - 1].as_mut_ptr().write_bytes(0, size_of::<U>());
+    }
 
-    dst_bytes[..src_size].copy_from_slice(src_bytes);
-
-    dst
+    dst.write_copy_of_slice(cast_slice(src));
+    unsafe { dst.assume_init() }
 }

@@ -1,7 +1,6 @@
 //! Functions, traits, methods, and types to improve memory integrity.
 
 #![cfg_attr(feature = "nightly_float", feature(f16, f128))]
-
 #![forbid(missing_docs)]
 #![forbid(unused_must_use)]
 #![deny(clippy::all)]
@@ -44,6 +43,7 @@ pub const fn if_private<T: private::Private>(_val: *const T) {}
 /// descriptor.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
+#[stable_auto::auto_opaque]
 pub enum BrinyError {
     /// Types of unequal sizes
     SizeBoundFailure,
@@ -64,7 +64,7 @@ impl core::fmt::Display for BrinyError {
 }
 impl core::error::Error for BrinyError {}
 
-unsafe impl crate::traits::Layout<u8> for BrinyError {}
+stable_auto::auto_leaf! { unsafe impl crate::traits::ReprSafe for BrinyError {} }
 
 #[allow(dead_code)]
 #[doc = include_str!("../README.md")]

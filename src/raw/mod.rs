@@ -12,12 +12,3 @@ pub use nonzero_copy::MaybeNullCopy;
 pub mod nonzero;
 
 pub use nonzero::MaybeNull;
-
-/// Transparent wrapper for `ImplicitPod` to `ExplicitPod` traits
-#[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PodCell<T>(pub T);
-
-unsafe impl<T> stable_auto::Auto for PodCell<T> {
-    type Fields = stable_auto::Leaf<T>;
-}

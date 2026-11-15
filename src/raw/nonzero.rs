@@ -2,7 +2,7 @@
 
 use stable_auto::Auto;
 
-use crate::{private::Private, traits::NonNullable};
+use crate::{private::Private, traits::{NonNullable, ReprSafe}};
 use core::{
     mem::{ManuallyDrop, MaybeUninit},
     ptr::write_bytes,
@@ -12,13 +12,13 @@ use core::{
 
 /// Thin wrapper over `T` that safely checks when it is initialized.
 #[derive(Auto, Debug)]
-pub struct MaybeNull<T: NonNullable + 'static> {
+pub struct MaybeNull<T: NonNullable + ReprSafe> {
     inner: MaybeUninit<T>,
 }
 
-impl<T: NonNullable> Private for MaybeNull<T> {}
+impl<T: NonNullable + ReprSafe> Private for MaybeNull<T> {}
 
-impl<T: NonNullable> MaybeNull<T> {
+impl<T: NonNullable + ReprSafe> MaybeNull<T> {
     /// Creates a zeroed bitpattern the size of a value.
     #[inline(always)]
     #[must_use]
@@ -57,18 +57,7 @@ impl<T: NonNullable> MaybeNull<T> {
     /// Returns false if it is null.
     #[inline(always)]
     pub const fn is_init(&self) -> bool {
-        let ptr = self.inner.as_ptr().cast::<u8>();
-        let mut i = 0;
-
-        while i < size_of::<T>() {
-            if unsafe { ptr.add(i).read() } == 0 {
-                return false;
-            }
-
-            i += 1;
-        }
-
-        true
+        !self.is_null()
     }
 
     /// Tries to convert this into an owned value.
@@ -250,7 +239,7 @@ impl<T: NonNullable> MaybeNull<T> {
     }
 }
 
-impl<T: NonNullable> Drop for MaybeNull<T> {
+impl<T: NonNullable + ReprSafe> Drop for MaybeNull<T> {
     #[inline(always)]
     fn drop(&mut self) {
         if self.is_init() {

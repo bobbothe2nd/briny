@@ -1,9 +1,6 @@
 //! A stronger version of `NonNullable`.
 
-use crate::{
-    private::Private,
-    traits::{InvalidPattern, Layout},
-};
+use crate::{private::Private, traits::InvalidPattern};
 
 /// Compatible with `match_null`:
 ///
@@ -100,12 +97,12 @@ macro_rules! impl_other {
         /// Represents any bitpattern that isnt `INVALID`.
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         #[repr(transparent)]
+        #[stable_auto::auto_opaque]
         pub struct $name<const INVALID: $valid>(pub(super) $valid);
 
-        // unsafe impl NonNullable for $name<0> {}
-        unsafe impl<const INVALID: $valid> Layout<$name<INVALID>> for $valid {}
-        unsafe impl<const INVALID: $valid> stable_auto::Auto for $name<INVALID> {
-            type Fields = stable_auto::AllImpl<Self>;
+        stable_auto::auto_leaf! {
+            unsafe impl<const INVALID: $valid> crate::traits::ReprSafe for $name<INVALID> {}
+            unsafe impl crate::traits::NonNullable for $name<0> {}
         }
 
         unsafe impl<const INVALID: $valid> InvalidPattern for $name<INVALID> {
