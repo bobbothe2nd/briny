@@ -335,9 +335,7 @@ auto_leaf! {
 /// # Safety
 ///
 /// - All bit patterns of `T` must be valid
-/// - `T` must have no padding or initialized padding
-///
-/// Violating any of these constraints is bound to cause undefined behavior.
+/// - `T` must be inhabited and initialized
 #[auto_trait]
 pub unsafe trait Pod: ReprSafe + NoPadding + 'static {}
 
@@ -377,8 +375,10 @@ pub unsafe trait CopySafe<T: ReprSafe>: Layout<T> {}
 unsafe impl<T: Layout<U>, U: ReprSafe + Copy> CopySafe<U> for T {}
 
 /// Marker trait for types with no uninitialized padding bytes.
+///
+/// The associated constant `HAS_NO_PADDING` is what decides if it is safe.
 pub unsafe trait NoPadding {
-    #[doc(hidden)]
+    /// `true` iff `Self` has no padding, else `false`
     const HAS_NO_PADDING: bool;
 }
 
