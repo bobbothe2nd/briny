@@ -1,8 +1,8 @@
 [package]
 name = "briny"
 version = "0.16.0"
-edition = "2021"
-rust-version = "1.92.0"
+edition = "2024"
+rust-version = "1.93.0"
 description = "Low-level enforcement of memory layout integrity"
 license = "MIT"
 documentation = "https://docs.rs/briny"
@@ -18,13 +18,11 @@ repository = "https://github.com/bobbothe2nd/briny"
 readme = "README.md"
 
 [dependencies]
-stable_auto = { version = "0.4", path = "../stable_auto/crates/stable_auto", default-features = false }
+stable_auto = { version = "0.4", default-features = false }
 half = { version = "2", optional = true, default-features = false }
 stable_intr = { version = "0.1.2", optional = true, default-features = false }
 
 [features]
-default = ["std"]
-
 # depends on alloc, still no_std
 alloc = ["stable_auto/alloc"]
 std = ["stable_auto/std", "alloc"]

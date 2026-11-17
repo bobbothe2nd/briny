@@ -68,4 +68,12 @@ stable_auto::auto_leaf! { unsafe impl crate::traits::ReprSafe for BrinyError {} 
 
 #[allow(dead_code)]
 #[doc = include_str!("../README.md")]
+/// ```compile_fail
+/// #[derive(stable_auto::Auto)]
+/// struct NotPod {
+///     a: core::num::NonZeroU32,
+///     b: u64,
+/// }
+/// briny::raw::cast::reinterpret::<[u8; 16], NotPod>([0; 16]);
+/// ```
 const fn test() {}

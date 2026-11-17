@@ -1,11 +1,11 @@
 //! Casting primitive operations.
 
 use crate::{
-    BrinyError, traits::{CopySafe, Layout, NoPadding, Pod, ReprSafe},
+    traits::{CopySafe, Layout, NoUninit, Pod, ReprSafe},
+    BrinyError,
 };
 use core::{
-    ptr::{from_mut, from_ref, read_unaligned},
-    slice,
+    ptr::{from_mut, from_ref, read, read_unaligned}, slice,
 };
 
 /// Reinterpret the bytes of `T` as `U` *without copying* them.
@@ -14,8 +14,8 @@ use core::{
 #[inline(always)]
 pub const fn reinterpret<T, U>(src: T) -> U
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(
@@ -74,7 +74,7 @@ pub const unsafe fn reinterpret_unchecked<T, U>(src: T) -> U {
 
 /// Converts any slice to bytes.
 #[inline]
-pub const fn slice_to_bytes<T: ReprSafe + NoPadding>(slice: &[T]) -> &[u8] {
+pub const fn slice_to_bytes<T: ReprSafe + NoUninit>(slice: &[T]) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
@@ -110,7 +110,7 @@ pub const fn slice_to_bytes_mut<T: Pod>(slice: &mut [T]) -> &mut [u8] {
 
 /// Converts any reference to a `Pod` type to bytes.
 #[inline(always)]
-pub const fn to_bytes<T: ReprSafe + NoPadding>(src: &T) -> &[u8] {
+pub const fn to_bytes<T: ReprSafe + NoUninit>(src: &T) -> &[u8] {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
 
@@ -305,18 +305,14 @@ pub const fn copy_from_bytes<T: Pod>(bytes: &[u8]) -> Result<T, BrinyError> {
 #[inline(always)]
 pub const fn copy<T, U>(src: &T) -> U
 where
-    T: NoPadding + CopySafe<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + CopySafe<U>,
+    U: ReprSafe,
 {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
         assert!(
             size_of::<T>() == size_of::<U>(),
             "cannot cast between types of different sizes"
-        );
-        assert!(
-            align_of::<T>() >= align_of::<U>(),
-            "cannot cast unaligned types"
         );
 
         assert!(
@@ -331,15 +327,19 @@ where
     }
 
     let src_as_u = from_ref(src).cast::<U>();
-    unsafe { read_unaligned(src_as_u) }
+    if const { align_of::<T>() >= align_of::<U>() } {
+        unsafe { read_unaligned(src_as_u) }
+    } else {
+        unsafe { read(src_as_u) }
+    }
 }
 
 /// Casts between two references like raw pointers
 #[inline(always)]
 pub const fn cast<T, U>(src: &T) -> &U
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
@@ -371,8 +371,8 @@ where
 #[inline(always)]
 pub const fn cast_mut<T, U>(src: &mut T) -> &mut U
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(size_of::<T>() > 0, "cannot cast between ZSTs");
@@ -404,8 +404,8 @@ where
 #[inline]
 pub const fn cast_slice<T, U>(src: &[T]) -> &[U]
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(
@@ -437,8 +437,8 @@ where
 #[inline]
 pub const fn cast_slice_mut<T, U>(src: &mut [T]) -> &mut [U]
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(

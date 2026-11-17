@@ -1,9 +1,14 @@
 //! Traits to abstract common characteristics among types.
 
 use core::{
-    cell::{Cell, UnsafeCell}, marker::{PhantomData, PhantomPinned}, mem::{ManuallyDrop, MaybeUninit}, num::{
-        NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize, NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize, Saturating, Wrapping,
-    }, ptr::NonNull,
+    cell::{Cell, UnsafeCell},
+    marker::{PhantomData, PhantomPinned},
+    mem::{ManuallyDrop, MaybeUninit},
+    num::{
+        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
+        NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize, Saturating, Wrapping,
+    },
+    ptr::NonNull,
 };
 
 #[cfg(target_has_atomic = "8")]
@@ -15,7 +20,7 @@ use core::sync::atomic::{AtomicI32, AtomicU32};
 #[cfg(target_has_atomic = "64")]
 use core::sync::atomic::{AtomicI64, AtomicU64};
 #[cfg(target_has_atomic = "ptr")]
-use core::sync::atomic::{AtomicPtr, AtomicIsize, AtomicUsize};
+use core::sync::atomic::{AtomicIsize, AtomicPtr, AtomicUsize};
 
 use stable_auto::{auto_leaf, auto_trait};
 
@@ -46,7 +51,7 @@ where
 }
 
 macro_rules! for_pod_ty {
-    ($nonnull:ident $trait:ident $macro:path) => {
+    ([$($nonnull:tt)*] $trait:ident $macro:path) => {
         $macro! {
             [] ()
             [] usize
@@ -67,8 +72,8 @@ macro_rules! for_pod_ty {
             [T: $trait] ManuallyDrop<T>
             [T: $trait] Wrapping<T>
             [T: $trait] Saturating<T>
-            [T: $nonnull + ReprSafe] Option<T>
-            [T: $nonnull + ReprSafe] MaybeNull<T>
+            [T: $($nonnull)* + ReprSafe] Option<T>
+            [T: $($nonnull)* + ReprSafe] MaybeNull<T>
             [T: $trait] Cell<T>
             [T: $trait] UnsafeCell<T>
 
@@ -216,6 +221,10 @@ macro_rules! for_pod_ty {
 }
 
 /// Marker trait for types which can be safely zeroed.
+///
+/// # Safety
+///
+/// If the type isn't actually zeroable, this is unsafe to implement.
 #[auto_trait]
 pub unsafe trait Zeroable {}
 
@@ -230,7 +239,7 @@ macro_rules! impl_zero {
     };
 }
 
-for_pod_ty!(CompilerAssumedNonNullable Zeroable impl_zero);
+for_pod_ty!([CompilerAssumedNonNullable] Zeroable impl_zero);
 
 impl_zero! {
     #[cfg(target_has_atomic = "8")]
@@ -266,6 +275,9 @@ impl_zero! {
     [] char
     [] str
 
+    [T: ?Sized] *const T
+    [T: ?Sized] *mut T
+
     [T] MaybeUninit<T>
 }
 
@@ -276,7 +288,7 @@ impl_zero! {
 /// If zeroed is a valid bitpattern, undefined behavior will occur
 /// when trying to optimize memory.
 #[auto_trait]
-pub unsafe trait NonNullable: NoPadding {}
+pub unsafe trait NonNullable: NoUninit {}
 
 auto_leaf! {
     unsafe impl<T: CompilerAssumedNonNullable + ?Sized> NonNullable for T {}
@@ -289,7 +301,7 @@ auto_leaf! {
 /// If the compiler can safely assume the type can't represent a zeroed bitpattern,
 /// this is safe. It isn't safe to implement on `Pod` types. The type must have valid
 /// bitpatterns for every other type.
-pub unsafe trait CompilerAssumedNonNullable: NonNullable + NoPadding {}
+pub unsafe trait CompilerAssumedNonNullable: NonNullable + NoUninit {}
 
 unsafe impl CompilerAssumedNonNullable for NonZeroU8 {}
 unsafe impl CompilerAssumedNonNullable for NonZeroI8 {}
@@ -313,7 +325,7 @@ unsafe impl<T> CompilerAssumedNonNullable for &mut T {}
 ///
 /// If other bitpatterns are invalid, implementing this trait is unsound.
 #[auto_trait]
-pub unsafe trait AnyNonNull: CompilerAssumedNonNullable + 'static {}
+pub unsafe trait AnyNonNull: NonNullable + NoUninit + 'static {}
 
 auto_leaf! {
     unsafe impl AnyNonNull for NonZeroU8 {}
@@ -328,6 +340,7 @@ auto_leaf! {
     unsafe impl AnyNonNull for NonZeroI128 {}
     unsafe impl AnyNonNull for NonZeroUsize {}
     unsafe impl AnyNonNull for NonZeroIsize {}
+    unsafe impl<T> AnyNonNull for NonNull<T> {}
 }
 
 /// POD marker trait for *Plain Old Data*.
@@ -337,7 +350,7 @@ auto_leaf! {
 /// - All bit patterns of `T` must be valid
 /// - `T` must be inhabited and initialized
 #[auto_trait]
-pub unsafe trait Pod: ReprSafe + NoPadding + 'static {}
+pub unsafe trait Pod: ReprSafe + NoUninit + 'static {}
 
 macro_rules! impl_pod {
     ($($(#[$attr:meta])*[$($generics:tt)*]$ty:ty)*) => {
@@ -348,7 +361,7 @@ macro_rules! impl_pod {
     };
 }
 
-for_pod_ty!(AnyNonNull Pod impl_pod);
+for_pod_ty!([AnyNonNull + CompilerAssumedNonNullable] Pod impl_pod);
 
 /// Marker trait describing directional bit-pattern validity.
 ///
@@ -376,18 +389,21 @@ unsafe impl<T: Layout<U>, U: ReprSafe + Copy> CopySafe<U> for T {}
 
 /// Marker trait for types with no uninitialized padding bytes.
 ///
-/// The associated constant `HAS_NO_PADDING` is what decides if it is safe.
-pub unsafe trait NoPadding {
+/// # Safety
+///
+/// The associated constant [`HAS_NO_PADDING`](`Self::HAS_NO_PADDING`) is what decides if it is safe.
+/// It must be correct.
+pub unsafe trait NoUninit {
     /// `true` iff `Self` has no padding, else `false`
     const HAS_NO_PADDING: bool;
 }
 
-unsafe impl<T> NoPadding for T
+unsafe impl<T> NoUninit for T
 where
     T: Auto,
     T::Fields: Sized,
 {
-    const HAS_NO_PADDING: bool = size_of::<T::Fields>() == size_of::<T>();
+    const HAS_NO_PADDING: bool = size_of::<T::Fields>() == size_of::<Self>();
 }
 
 /// Types whose initialized representations may be safely reinterpreted.
@@ -399,7 +415,7 @@ where
 ///
 /// This has nothing to do with FFI or `repr(C)`!
 #[auto_trait]
-pub unsafe trait ReprSafe {}
+pub unsafe trait ReprSafe: NoUninit {}
 
 macro_rules! impl_repr_safe {
     ($($(#[$attr:meta])*[$($generics:tt)*]$ty:ty)*) => {
@@ -410,7 +426,7 @@ macro_rules! impl_repr_safe {
     };
 }
 
-for_pod_ty!(CompilerAssumedNonNullable ReprSafe impl_repr_safe);
+for_pod_ty!([CompilerAssumedNonNullable] ReprSafe impl_repr_safe);
 
 impl_repr_safe! {
     #[cfg(target_has_atomic = "8")]
@@ -455,9 +471,9 @@ impl_repr_safe! {
     [] NonZeroIsize
     [] NonZeroUsize
 
-    [T] *const T
-    [T] *mut T
-    [T] NonNull<T>
+    [T: ?Sized] *const T
+    [T: ?Sized] *mut T
+    [T: ?Sized] NonNull<T>
 
     [] bool
     [] char

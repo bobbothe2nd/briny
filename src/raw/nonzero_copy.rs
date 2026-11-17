@@ -1,4 +1,7 @@
-use crate::{private::Private, traits::{NonNullable, ReprSafe}};
+use crate::{
+    private::Private,
+    traits::{NonNullable, ReprSafe},
+};
 use core::{mem::MaybeUninit, ptr::write_bytes};
 
 // add : NoUninitPadding

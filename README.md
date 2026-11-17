@@ -120,6 +120,12 @@ let true_bool: bool = reinterpret(1);
 assert!(true_bool);
 ```
 
+## Downsides
+
+- While ecosystem support is built into `briny` (libraries implementing data structures don't need to depend on it), this is the biggest downside of using this over something like `bytemuck`.
+- Another major downside is that it's very unstable if you couldn't tell by v0.16.0 in less than a year and a half.
+- There's also the MSRV. To be fair, if you're not using Rust 1.92+, you probably should be.
+
 ## Contributing
 
 Contributions, bug reports, and suggestions are welcome! This project aims to help build verifiably secure foundations for low-level and embedded Rust development.

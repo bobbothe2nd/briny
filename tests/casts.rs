@@ -1,5 +1,5 @@
 use briny::{
-    raw::cast::{cast, copy, copy_from_bytes, from_bytes, reinterpret, to_bytes}, traits::{Auto, Layout, ReprSafe},
+    raw::cast::{cast, copy, copy_from_bytes, from_bytes, reinterpret, to_bytes}, traits::{Auto, Layout, NoUninit, ReprSafe},
 };
 
 #[repr(packed)]
@@ -12,10 +12,14 @@ struct Pair {
 #[repr(packed)]
 #[derive(Copy, Clone, Debug)]
 struct Pair2 {
-    _a: u32,
-    _b: u64,
+    _a: u64,
+    _b: u32,
 }
 
+// usually automatically implemented by deruve(Auto)
+unsafe impl NoUninit for Pair2 {
+    const HAS_NO_PADDING: bool = true;
+}
 unsafe impl ReprSafe for Pair2 {}
 unsafe impl Layout<Pair2> for Pair {}
 

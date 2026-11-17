@@ -4,15 +4,18 @@ use core::mem::forget;
 
 use alloc::{boxed::Box, rc::Rc, sync::Arc, vec::Vec};
 
-use crate::{raw::cast::cast_slice, traits::{Layout, NoPadding, Pod, ReprSafe, Zeroable}};
+use crate::{
+    raw::cast::cast_slice,
+    traits::{Layout, NoUninit, Pod, ReprSafe, Zeroable},
+};
 
 /// Casts between two `Vec`s of different types.
 #[must_use]
 #[inline(always)]
 pub fn cast_vec<T, U>(mut input: Vec<T>) -> Vec<U>
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(
@@ -57,8 +60,8 @@ where
 #[inline(always)]
 pub fn cast_box<T, U>(input: Box<T>) -> Box<U>
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(size_of::<T>() != 0, "cannot cast between ZSTs");
@@ -82,8 +85,8 @@ where
 #[inline(always)]
 pub fn cast_arc<T, U>(input: Arc<T>) -> Arc<U>
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(
@@ -120,8 +123,8 @@ where
 #[inline(always)]
 pub fn cast_rc<T, U>(input: Rc<T>) -> Rc<U>
 where
-    T: NoPadding + Layout<U>,
-    U: NoPadding + ReprSafe,
+    T: NoUninit + Layout<U>,
+    U: ReprSafe,
 {
     const {
         assert!(
@@ -283,7 +286,9 @@ pub fn collect_reinterpret<T: Pod, U: Pod + Copy>(src: &[T]) -> Box<[U]> {
     let mut dst = Box::<[U]>::new_uninit_slice(dst_count);
 
     unsafe {
-        dst[dst.len() - 1].as_mut_ptr().write_bytes(0, size_of::<U>());
+        dst[dst.len() - 1]
+            .as_mut_ptr()
+            .write_bytes(0, size_of::<U>());
     }
 
     dst.write_copy_of_slice(cast_slice(src));

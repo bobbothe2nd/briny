@@ -2,7 +2,10 @@
 
 use stable_auto::Auto;
 
-use crate::{private::Private, traits::{NonNullable, ReprSafe}};
+use crate::{
+    private::Private,
+    traits::{NonNullable, ReprSafe},
+};
 use core::{
     mem::{ManuallyDrop, MaybeUninit},
     ptr::write_bytes,
